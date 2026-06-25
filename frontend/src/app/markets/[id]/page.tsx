@@ -322,7 +322,7 @@ function ResolutionBanner({ market, onChange }: { market: Market; onChange?: () 
               <button onClick={() => setOpen(false)} className="h-9 px-3 rounded-lg border border-ink-200 dark:border-ink-700 text-sm">Cancel</button>
               <button onClick={submit} disabled={busy || reason.trim().length < 10}
                       className="h-9 px-3 rounded-lg bg-no-500 text-white text-sm font-medium disabled:opacity-50">
-                {busy ? "Submitting…" : "File dispute"}
+                {busy ? "Submitting..." : "File dispute"}
               </button>
             </div>
           </div>

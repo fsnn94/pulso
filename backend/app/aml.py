@@ -492,32 +492,3 @@ async def evaluate_after_trade(db: AsyncSession, user_id: uuid.UUID, market_id: 
 
     alerts = await persist_findings(db, findings)
     return alerts
- and NO ({no:.2f}) in the same market "
-                f"after a recent fill — paired={paired:.2f}."
-            ),
-            evidence={"yes_shares": yes, "no_shares": no, "paired_shares": paired},
-            dedup_key=f"WASH:{user_id}:{market_id}",
-        ))
-
-    # Velocity (this user, last hour)
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=settings.aml_velocity_window_minutes)
-    row = (await db.execute(
-        select(
-            func.count(Trade.id),
-            func.coalesce(func.sum(Trade.price * Trade.quantity), 0.0),
-        ).where(Trade.buyer_id == user_id, Trade.created_at >= cutoff)
-    )).first()
-    if row:
-        n = int(row[0] or 0); notional = float(row[1] or 0.0)
-        if n > settings.aml_velocity_trade_count_threshold or notional > settings.aml_velocity_notional_threshold:
-            findings.append(AlertFinding(
-                user_id=user_id, rule_code="VELOCITY",
-                severity=AmlSeverity.MEDIUM,
-                message=f"{n} trades / ${notional:,.0f} in the last {settings.aml_velocity_window_minutes}m.",
-                evidence={"trade_count": n, "notional": notional,
-                          "window_minutes": settings.aml_velocity_window_minutes},
-                dedup_key=f"VELOCITY:{user_id}:{cutoff.strftime('%Y%m%d%H%M')[:11]}",
-            ))
-
-    alerts = await persist_findings(db, findings)
-    return alerts

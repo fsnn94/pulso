@@ -320,4 +320,14 @@ function ResolutionBanner({ market, onChange }: { market: Market; onChange?: () 
                       className="w-full px-3 py-2 rounded-lg border border-ink-200 dark:border-ink-800 bg-transparent text-sm mb-3"/>
             <div className="flex justify-end gap-2">
               <button onClick={() => setOpen(false)} className="h-9 px-3 rounded-lg border border-ink-200 dark:border-ink-700 text-sm">Cancel</button>
-              <button onClick={submit} disabled={busy
+              <button onClick={submit} disabled={busy || reason.trim().length < 10}
+                      className="h-9 px-3 rounded-lg bg-no-500 text-white text-sm font-medium disabled:opacity-50">
+                {busy ? "Submitting…" : "File dispute"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

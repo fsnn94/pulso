@@ -1,0 +1,198 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { api, Order, Portfolio } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { timeAgo, usd } from "@/lib/format";
+
+export default function PortfolioPage() {
+  const { user, loading } = useAuth();
+  const [pf, setPf] = useState<Portfolio | null>(null);
+  const [openOrders, setOpenOrders] = useState<Order[]>([]);
+  const [marketsById, setMarketsById] = useState<Record<string, { short_title: string; current_yes_price: number; category: string }>>({});
+
+  const refresh = async () => {
+    try {
+      const [p, oo, ml] = await Promise.all([api.portfolio(), api.myOrders(true), api.listMarkets()]);
+      setPf(p); setOpenOrders(oo);
+      setMarketsById(Object.fromEntries(ml.items.map((m) => [m.id, { short_title: m.short_title, current_yes_price: m.current_yes_price, category: m.category }])));
+    } catch {}
+  };
+
+  useEffect(() => { if (user) void refresh(); }, [user?.id]); // eslint-disable-line
+
+  const totals = useMemo(() => {
+    if (!pf) return null;
+    let value = 0, cost = 0;
+    for (const p of pf.positions) {
+      const m = marketsById[p.market_id];
+      const px = m ? (p.side === "YES" ? m.current_yes_price : 1 - m.current_yes_price) : p.avg_cost;
+      value += px * p.shares;
+      cost  += p.avg_cost * p.shares;
+    }
+    return { value, cost, pnl: value - cost, equity: pf.cash + value };
+  }, [pf, marketsById]);
+
+  if (loading) return <div className="p-12 text-center text-sm text-ink-500">Loading…</div>;
+  if (!user) return (
+    <div className="max-w-md mx-auto py-20 text-center">
+      <h1 className="text-2xl font-semibold mb-2">Sign in to see your portfolio</h1>
+      <p className="text-ink-500 dark:text-ink-400 mb-6 text-sm">Trades you place will appear here once you're signed in.</p>
+      <Link href="/login" className="inline-block h-10 px-4 grid place-items-center rounded-lg bg-ink-900 text-white dark:bg-white dark:text-ink-900 font-medium">Log in</Link>
+    </div>
+  );
+
+  return (
+    <div className="view-enter max-w-7xl mx-auto px-4 sm:px-6 py-8 lg:py-12">
+      <div className="flex items-end justify-between flex-wrap gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">Portfolio</h1>
+          <p className="text-ink-500 dark:text-ink-400 mt-1 text-sm">Your simulated positions, performance, and activity.</p>
+        </div>
+        <Link href="/" className="h-10 px-4 grid place-items-center rounded-lg border border-ink-200 dark:border-ink-800 hover:bg-ink-50 dark:hover:bg-ink-900 text-sm font-medium">
+          Find markets
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <Kpi label="Total equity"     value={usd(totals?.equity ?? user.cash)} sub="cash + positions"/>
+        <Kpi label="Cash"             value={usd(user.cash)} sub="virtual credits"/>
+        <Kpi label="Open positions"   value={(pf?.positions.length ?? 0).toString()} sub={`${(pf?.positions.reduce((s, p) => s + p.shares, 0) ?? 0).toFixed(0)} shares`}/>
+        <Kpi label="Unrealized P&L"   value={`${(totals?.pnl ?? 0) >= 0 ? "+" : ""}${usd(totals?.pnl ?? 0)}`}
+             accent={(totals?.pnl ?? 0) >= 0 ? "yes" : "no"}
+             sub={totals && totals.cost > 0 ? `${(totals.pnl / totals.cost * 100).toFixed(1)}% on cost` : "—"}/>
+      </div>
+
+      <Section title={`Open positions (${pf?.positions.length ?? 0})`}>
+        {!pf || pf.positions.length === 0 ? (
+          <Empty body="Buy YES or NO on any market to start your simulated portfolio."/>
+        ) : (
+          <Table head={["Market", "Side", "Shares", "Avg cost", "Current", "Value", "P&L"]}>
+            {pf.positions.map((p) => {
+              const m = marketsById[p.market_id];
+              const px = m ? (p.side === "YES" ? m.current_yes_price : 1 - m.current_yes_price) : p.avg_cost;
+              const value = px * p.shares;
+              const pnl = value - p.avg_cost * p.shares;
+              return (
+                <tr key={p.id} className="border-b border-ink-50 dark:border-ink-800/50 last:border-0 hover:bg-ink-50/60 dark:hover:bg-ink-800/30">
+                  <td className="px-5 sm:px-6 py-3">
+                    <Link href={`/markets/${p.market_id}`} className="text-left">
+                      <div className="font-medium leading-tight line-clamp-2 max-w-md hover:text-accent-500">{m?.short_title ?? p.market_id}</div>
+                      <div className="text-[11px] text-ink-500 dark:text-ink-400 mt-0.5">{m?.category ?? ""}</div>
+                    </Link>
+                  </td>
+                  <td className={`px-3 py-3 font-medium ${p.side === "YES" ? "text-yes-500" : "text-no-500"}`}>{p.side}</td>
+                  <td className="px-3 py-3 text-right num">{p.shares.toFixed(2)}</td>
+                  <td className="px-3 py-3 text-right num">{(p.avg_cost * 100).toFixed(1)}¢</td>
+                  <td className="px-3 py-3 text-right num">{(px * 100).toFixed(1)}¢</td>
+                  <td className="px-3 py-3 text-right num font-medium">{usd(value)}</td>
+                  <td className={`px-3 py-3 text-right num font-medium ${pnl >= 0 ? "text-yes-500" : "text-no-500"}`}>
+                    {pnl >= 0 ? "+" : ""}{usd(pnl)}
+                  </td>
+                </tr>
+              );
+            })}
+          </Table>
+        )}
+      </Section>
+
+      <Section title={`Open orders (${openOrders.length})`}>
+        {openOrders.length === 0 ? (
+          <Empty body="No resting limit orders."/>
+        ) : (
+          <Table head={["Market", "Type", "Side", "Limit", "Filled", "Quantity", ""]}>
+            {openOrders.map((o) => {
+              const m = marketsById[o.market_id];
+              return (
+                <tr key={o.id} className="border-b border-ink-50 dark:border-ink-800/50 last:border-0">
+                  <td className="px-5 sm:px-6 py-3">
+                    <Link href={`/markets/${o.market_id}`} className="font-medium hover:text-accent-500">{m?.short_title ?? o.market_id}</Link>
+                  </td>
+                  <td className="px-3 py-3 text-ink-500 dark:text-ink-400">{o.type}</td>
+                  <td className={`px-3 py-3 font-medium ${o.side === "YES" ? "text-yes-500" : "text-no-500"}`}>{o.side}</td>
+                  <td className="px-3 py-3 text-right num">{o.limit_price !== null ? `${(o.limit_price * 100).toFixed(1)}¢` : "—"}</td>
+                  <td className="px-3 py-3 text-right num">{o.filled_quantity.toFixed(2)}</td>
+                  <td className="px-3 py-3 text-right num">{o.quantity.toFixed(2)}</td>
+                  <td className="px-5 sm:px-6 py-3 text-right">
+                    <button onClick={async () => { await api.cancelOrder(o.id); await refresh(); }}
+                            className="h-8 px-3 text-xs font-medium rounded-md border border-ink-200 dark:border-ink-700 hover:bg-ink-50 dark:hover:bg-ink-800">
+                      Cancel
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </Table>
+        )}
+      </Section>
+
+      <Section title={`Activity (${pf?.activity.length ?? 0})`}>
+        {!pf || pf.activity.length === 0 ? (
+          <Empty body="Trades and resolutions will appear here."/>
+        ) : (
+          <div className="divide-y divide-ink-50 dark:divide-ink-800/50">
+            {pf.activity.slice(0, 30).map((a) => (
+              <div key={a.id} className="flex items-center gap-4 px-5 sm:px-6 py-3 text-sm">
+                <span className="text-[11px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider bg-accent-500/15 text-accent-500">{a.kind}</span>
+                {a.side && <span className={`font-semibold ${a.side === "YES" ? "text-yes-500" : "text-no-500"}`}>{a.side}</span>}
+                {a.quantity !== null && <span className="num">{a.quantity?.toFixed(2)} sh</span>}
+                {a.price !== null && <span className="num text-ink-500 dark:text-ink-400">@ {(a.price! * 100).toFixed(1)}¢</span>}
+                {a.market_id && (
+                  <Link href={`/markets/${a.market_id}`} className="hidden md:block flex-1 truncate text-ink-700 dark:text-ink-300 hover:text-accent-500 text-left">
+                    {marketsById[a.market_id]?.short_title ?? a.market_id}
+                  </Link>
+                )}
+                {a.total !== null && <span className="num font-medium ml-auto md:ml-0">{usd(a.total!)}</span>}
+                <span className="num text-xs text-ink-500 dark:text-ink-400 hidden sm:inline">{timeAgo(a.created_at)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
+    </div>
+  );
+}
+
+function Kpi({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: "yes" | "no" }) {
+  const c = accent === "yes" ? "text-yes-500" : accent === "no" ? "text-no-500" : "";
+  return (
+    <div className="rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-4">
+      <div className="text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400">{label}</div>
+      <div className={`text-2xl font-semibold num mt-1 ${c}`}>{value}</div>
+      {sub && <div className="text-xs text-ink-500 dark:text-ink-400 mt-1">{sub}</div>}
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 mb-8 overflow-hidden">
+      <div className="px-5 sm:px-6 py-4 border-b border-ink-100 dark:border-ink-800 flex items-center justify-between">
+        <h2 className="font-semibold">{title}</h2>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Empty({ body }: { body: string }) {
+  return <div className="px-6 py-14 text-center text-sm text-ink-500 dark:text-ink-400">{body}</div>;
+}
+
+function Table({ head, children }: { head: string[]; children: React.ReactNode }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="text-[11px] uppercase tracking-wider text-ink-500 dark:text-ink-400">
+          <tr className="border-b border-ink-100 dark:border-ink-800">
+            {head.map((h, i) => (
+              <th key={h + i} className={`px-3 py-2 font-medium ${i === 0 ? "text-left px-5 sm:px-6" : "text-right"}`}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>{children}</tbody>
+      </table>
+    </div>
+  );
+}

@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body { font-family: 'Inter', system-ui, sans-serif; }
+  body { font-feature-settings: "cv11", "ss01", "ss03"; }
+  :root { color-scheme: light; }
+  .dark { color-scheme: dark; }
+}
+
+@layer utilities {
+  .num   { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+  .mono  { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d4d6da; border-radius: 8px; }
+.dark ::-webkit-scrollbar-thumb { background: #4A4540; }
+
+@keyframes livepulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.6); opacity: .35; }
+}
+.livedot { animation: livepulse 1.6s ease-in-out infinite; }
+
+@keyframes fadein { from { opacity: 0; transform: translateY(4px);} to { opacity: 1; transform: none; } }
+.view-enter { animation: fadein .25s ease-out; }

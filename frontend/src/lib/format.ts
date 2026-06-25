@@ -1,0 +1,19 @@
+export const pct = (n: number, d = 0) => `${(n * 100).toFixed(d)}%`;
+export const pp  = (n: number) => `${n >= 0 ? "+" : ""}${(n * 100).toFixed(1)}pp`;
+export const usd = (n: number, d = 2) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: d, maximumFractionDigits: d }).format(n);
+export const compact = (n: number): string => {
+  if (n >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
+  if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
+  if (n >= 1e3) return `$${(n / 1e3).toFixed(1)}K`;
+  return `$${n.toFixed(0)}`;
+};
+export const timeAgo = (iso: string | number | Date) => {
+  const ts = new Date(iso).getTime();
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60)    return `${s}s ago`;
+  if (s < 3600)  return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
+};
+export const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));

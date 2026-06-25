@@ -231,7 +231,7 @@ function Label({ children, className = "" }: { children: React.ReactNode; classN
 }
 
 function PrefixInput({ prefix, value, onChange, ...rest }:
-  { prefix: string; value: string; onChange: (v: string) => void } & React.InputHTMLAttributes<HTMLInputElement>) {
+  { prefix: string; value: string; onChange: (v: string) => void } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'>) {
   return (
     <div className="mt-1.5 flex items-stretch rounded-lg border border-ink-200 dark:border-ink-800 focus-within:border-accent-500">
       <span className="px-3 grid place-items-center text-ink-400 dark:text-ink-500 border-r border-ink-200 dark:border-ink-800 text-sm">{prefix}</span>

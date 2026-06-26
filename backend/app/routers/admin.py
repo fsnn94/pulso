@@ -35,7 +35,7 @@ async def create_market(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     if (await db.execute(select(Market).where(Market.id == payload.id))).scalar_one_or_none():
-        raise HTTPException(409, "Market id already exists")
+        raise HTTPException(409, "El identificador ya está en uso")
     m = Market(
         id=payload.id, title=payload.title, short_title=payload.short_title,
         description=payload.description, category=payload.category,
@@ -57,7 +57,7 @@ async def resolve(
 ):
     m = (await db.execute(select(Market).where(Market.id == market_id))).scalar_one_or_none()
     if not m:
-        raise HTTPException(404, "Market not found")
+        raise HTTPException(404, "Mercado no encontrado")
     paid = await resolve_market(db, m, payload.outcome)
     await db.commit(); await db.refresh(m)
     await broadcast_market_event(m.id, {
@@ -91,9 +91,9 @@ async def review_proposal(
 ):
     p = await db.get(MarketProposal, proposal_id)
     if not p:
-        raise HTTPException(404, "Proposal not found")
+        raise HTTPException(404, "Propuesta no encontrada")
     if p.status != ProposalStatus.PENDING:
-        raise HTTPException(400, f"Proposal already {p.status.value}")
+        raise HTTPException(400, f"La propuesta ya está en estado {p.status.value}")
 
     p.review_note = payload.review_note
     p.reviewed_by = admin.id
@@ -106,7 +106,7 @@ async def review_proposal(
         return p
 
     if (await db.execute(select(Market).where(Market.id == p.slug))).scalar_one_or_none():
-        raise HTTPException(409, "A market with the proposal's slug already exists")
+        raise HTTPException(409, "Ya existe un mercado con el identificador de la propuesta")
 
     market = Market(
         id=p.slug, title=p.title, short_title=p.short_title, description=p.description,
@@ -209,7 +209,7 @@ async def set_aml(
 ):
     u = await db.get(User, user_id)
     if not u:
-        raise HTTPException(404, "User not found")
+        raise HTTPException(404, "Usuario no encontrado")
     u.aml_flag = flag
     u.aml_note = note
     await db.commit()

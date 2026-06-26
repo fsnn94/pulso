@@ -123,9 +123,9 @@ class LlmSearchResolver:
             logger.info("LlmSearchResolver: LLM_RESOLVER_API_KEY not set — skipping market %s", market.id)
             return ResolverResult(
                 outcome=None, confidence=0.0,
-                evidence={"error": "LLM_RESOLVER_API_KEY not configured — admin must decide manually",
+                evidence={"error": "LLM_RESOLVER_API_KEY no configurado — el admin debe decidir manualmente",
                           "instructions": cfg.get("instructions") or market.description},
-                source_name="LLM analyst (unconfigured)",
+                source_name="Analista LLM (sin configurar)",
                 source_url=None,
                 auto_finalize_hours=None,  # always queue for admin
             )
@@ -139,9 +139,9 @@ class LlmSearchResolver:
         if raw_outcome not in ("YES", "NO", "VOID"):
             return ResolverResult(
                 outcome=None, confidence=0.0,
-                evidence={"error": "LLM returned non-{YES,NO,VOID} outcome",
+                evidence={"error": "El LLM devolvió un resultado distinto de {YES,NO,VOID}",
                           "raw": parsed},
-                source_name="LLM analyst",
+                source_name="Analista LLM",
                 source_url=None,
                 auto_finalize_hours=None,
             )
@@ -160,7 +160,7 @@ class LlmSearchResolver:
                 "model":     model,
                 "raw":       parsed,
             },
-            source_name=f"LLM analyst ({model})",
+            source_name=f"Analista LLM ({model})",
             source_url=None,
             # IMPORTANT: never auto-finalize LLM-decided outcomes. The admin
             # queue is the trust boundary.

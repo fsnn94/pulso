@@ -20,24 +20,24 @@ async def get_current_user(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
     if creds is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Missing bearer token")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Falta el token de autenticación")
     payload = decode_token(creds.credentials)
     if not payload or "sub" not in payload:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token inválido o expirado")
     try:
         user_id = uuid.UUID(payload["sub"])
     except ValueError:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token subject")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token inválido o expirado")
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if user is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Usuario no encontrado")
     return user
 
 
 async def require_admin(user: Annotated[User, Depends(get_current_user)]) -> User:
     if not user.is_admin:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Admin only")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Se requiere acceso de admin")
     return user
 
 
@@ -47,6 +47,6 @@ async def require_verified(user: Annotated[User, Depends(get_current_user)]) -> 
     if get_settings().require_email_verification_to_trade and not user.email_verified:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            "Email verification required before trading. Check your inbox or request a new link.",
+            "Verifica tu email para operar. Revisa tu bandeja de entrada o solicita un nuevo link.",
         )
     return user

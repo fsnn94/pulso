@@ -131,9 +131,9 @@ async def place_order(db: AsyncSession, user: User, payload: OrderIn) -> tuple[O
 
     # Validate
     if payload.type == OrderType.LIMIT and payload.limit_price is None:
-        raise HTTPException(400, "limit_price required for LIMIT orders")
+        raise HTTPException(400, "Se requiere precio límite para las órdenes LIMIT")
     if payload.type == OrderType.LIMIT and payload.action == OrderAction.SELL:
-        raise HTTPException(400, "LIMIT SELL not supported in this version; use MARKET to close.")
+        raise HTTPException(400, "Las órdenes LIMIT SELL no están soportadas; usa MARKET para cerrar.")
 
     order = Order(
         user_id=user.id, market_id=market.id,
@@ -160,9 +160,9 @@ async def _load_open_market(db: AsyncSession, market_id: str) -> Market:
     res = await db.execute(select(Market).where(Market.id == market_id))
     m = res.scalar_one_or_none()
     if not m:
-        raise HTTPException(404, "Market not found")
+        raise HTTPException(404, "Mercado no encontrado")
     if m.status != MarketStatus.OPEN:
-        raise HTTPException(400, f"Market is {m.status.value}, not accepting orders")
+        raise HTTPException(400, f"El mercado está en estado {m.status.value} y no acepta órdenes")
     return m
 
 
@@ -174,7 +174,7 @@ async def _fill_market_buy(db: AsyncSession, market: Market, user: User, order: 
     cost = fill_price * order.quantity
 
     if user.cash + EPSILON < cost:
-        raise HTTPException(400, f"Insufficient virtual cash: needs {cost:.2f}, has {user.cash:.2f}")
+        raise HTTPException(400, f"Saldo insuficiente: requiere {cost:.2f}, tienes {user.cash:.2f}")
 
     user.cash -= cost
     pos = await _get_or_create_position(db, user.id, market.id, order.side)
@@ -185,7 +185,7 @@ async def _fill_market_buy(db: AsyncSession, market: Market, user: User, order: 
                   buyer_order=order.id, seller_order=None)
     _record_activity(db, user_id=user.id, market_id=market.id, kind="FILL",
                      side=order.side, quantity=order.quantity, price=fill_price, total=cost,
-                     note=f"Market BUY {order.side.value}")
+                     note=f"Compra a mercado {order.side.value}")
 
     order.filled_quantity = order.quantity
     order.avg_fill_price = fill_price
@@ -202,12 +202,12 @@ async def _place_limit_buy(db: AsyncSession, market: Market, user: User, order: 
     # Reserve cash for the resting order.
     reserved = order.limit_price * order.quantity
     if user.cash + EPSILON < reserved:
-        raise HTTPException(400, f"Insufficient virtual cash to reserve {reserved:.2f}")
+        raise HTTPException(400, f"Saldo insuficiente para reservar {reserved:.2f}")
     user.cash -= reserved
 
     _record_activity(db, user_id=user.id, market_id=market.id, kind="ORDER_PLACED",
                      side=order.side, quantity=order.quantity, price=order.limit_price, total=reserved,
-                     note=f"LIMIT BUY {order.side.value} @ {order.limit_price:.2f}")
+                     note=f"Compra LIMIT {order.side.value} a {order.limit_price:.2f}")
 
     fills = await _try_cross_match(db, market, user, order)
 
@@ -299,10 +299,10 @@ async def _try_cross_match(db: AsyncSession, market: Market, user: User, taker: 
         # Activity for both
         _record_activity(db, user_id=user.id, market_id=market.id, kind="FILL",
                          side=taker.side, quantity=qty, price=taker_price, total=taker_price * qty,
-                         note=f"LIMIT match vs {maker.side.value}")
+                         note=f"Cruce LIMIT contra {maker.side.value}")
         _record_activity(db, user_id=maker.user_id, market_id=market.id, kind="FILL",
                          side=maker.side, quantity=qty, price=maker_price, total=maker_price * qty,
-                         note=f"LIMIT match vs {taker.side.value}")
+                         note=f"Cruce LIMIT contra {taker.side.value}")
 
         market.volume_24h += (taker_price + maker_price) * qty
         _update_market_price(market, taker.side, taker_price)
@@ -327,7 +327,7 @@ async def _fill_market_sell(db: AsyncSession, market: Market, user: User, order:
     )
     pos = pos_res.scalar_one_or_none()
     if not pos or pos.shares + EPSILON < order.quantity:
-        raise HTTPException(400, f"Insufficient {order.side.value} shares to sell")
+        raise HTTPException(400, f"Posición insuficiente de {order.side.value} para vender")
 
     base_price = market.current_yes_price if order.side == Side.YES else 1.0 - market.current_yes_price
     fill_price = _clamp_price(base_price - _slippage(order.quantity, market.liquidity))
@@ -341,7 +341,7 @@ async def _fill_market_sell(db: AsyncSession, market: Market, user: User, order:
                   buyer_order=None, seller_order=order.id)
     _record_activity(db, user_id=user.id, market_id=market.id, kind="FILL",
                      side=order.side, quantity=order.quantity, price=fill_price, total=proceeds,
-                     note=f"Market SELL {order.side.value} (realized {realized:+.2f})")
+                     note=f"Venta a mercado {order.side.value} (realizado {realized:+.2f})")
 
     order.filled_quantity = order.quantity
     order.avg_fill_price = fill_price
@@ -359,9 +359,9 @@ async def cancel_order(db: AsyncSession, user: User, order_id: uuid.UUID) -> Ord
     res = await db.execute(select(Order).where(Order.id == order_id))
     order = res.scalar_one_or_none()
     if not order or order.user_id != user.id:
-        raise HTTPException(404, "Order not found")
+        raise HTTPException(404, "Orden no encontrada")
     if order.status not in (OrderStatus.OPEN, OrderStatus.PARTIAL):
-        raise HTTPException(400, f"Cannot cancel {order.status.value} order")
+        raise HTTPException(400, f"No se puede cancelar una orden en estado {order.status.value}")
 
     # Refund unspent reserved cash for LIMIT BUYs
     if order.action == OrderAction.BUY and order.type == OrderType.LIMIT and order.limit_price is not None:
@@ -370,7 +370,7 @@ async def cancel_order(db: AsyncSession, user: User, order_id: uuid.UUID) -> Ord
         user.cash += refund
         _record_activity(db, user_id=user.id, market_id=order.market_id, kind="ORDER_CANCELLED",
                          side=order.side, quantity=unfilled, price=order.limit_price, total=refund,
-                         note="Cancelled LIMIT BUY")
+                         note="Compra LIMIT cancelada")
     order.status = OrderStatus.CANCELLED
     return order
 
@@ -380,7 +380,7 @@ async def cancel_order(db: AsyncSession, user: User, order_id: uuid.UUID) -> Ord
 async def resolve_market(db: AsyncSession, market: Market, outcome: Side) -> int:
     """Pay out 1.00 per share to all winning positions, and cancel open orders."""
     if market.status == MarketStatus.RESOLVED:
-        raise HTTPException(400, "Market already resolved")
+        raise HTTPException(400, "El mercado ya está resuelto")
 
     # Cancel & refund all open orders
     open_orders = await db.execute(
@@ -407,12 +407,12 @@ async def resolve_market(db: AsyncSession, market: Market, outcome: Side) -> int
                 u.cash += payout
             _record_activity(db, user_id=p.user_id, market_id=market.id, kind="RESOLVED",
                              side=p.side, quantity=p.shares, price=1.0, total=payout,
-                             note=f"Resolved {outcome.value} — paid out")
+                             note=f"Resuelto {outcome.value} — pagado")
             p.realized_pnl += (1.0 - p.avg_cost) * p.shares
         else:
             _record_activity(db, user_id=p.user_id, market_id=market.id, kind="RESOLVED",
                              side=p.side, quantity=p.shares, price=0.0, total=0.0,
-                             note=f"Resolved {outcome.value} — position expired")
+                             note=f"Resuelto {outcome.value} — posición expirada")
             p.realized_pnl += (0.0 - p.avg_cost) * p.shares
         p.shares = 0.0
         paid += 1
@@ -435,7 +435,7 @@ async def void_market(db: AsyncSession, market: Market) -> int:
     or otherwise un-decidable.
     """
     if market.status in (MarketStatus.RESOLVED, MarketStatus.VOIDED):
-        raise HTTPException(400, "Market already finalized")
+        raise HTTPException(400, "El mercado ya fue finalizado")
 
     # Cancel & refund open orders (same as in resolve_market)
     open_orders = await db.execute(
@@ -461,7 +461,7 @@ async def void_market(db: AsyncSession, market: Market) -> int:
             u.cash += refund
         _record_activity(db, user_id=p.user_id, market_id=market.id, kind="VOIDED",
                          side=p.side, quantity=p.shares, price=p.avg_cost, total=refund,
-                         note="Market voided — refunded at avg cost")
+                         note="Mercado nulo — reembolsado al costo promedio")
         # PnL is exactly zero for voided shares
         p.shares = 0.0
         refunded += 1

@@ -48,7 +48,7 @@ async def get_market(market_id: str, db: Annotated[AsyncSession, Depends(get_db)
     res = await db.execute(select(Market).where(Market.id == market_id))
     m = res.scalar_one_or_none()
     if not m:
-        raise HTTPException(404, "Market not found")
+        raise HTTPException(404, "Mercado no encontrado")
     return m
 
 

@@ -24,13 +24,13 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def register(payload: RegisterIn, db: Annotated[AsyncSession, Depends(get_db)]):
     s = get_settings()
     if not payload.accepted_disclaimer:
-        raise HTTPException(400, "You must acknowledge the research disclaimer")
+        raise HTTPException(400, "Debes aceptar el descargo")
     existing = await db.execute(select(User).where(User.email == payload.email))
     if existing.scalar_one_or_none():
-        raise HTTPException(409, "Email already registered")
+        raise HTTPException(409, "El email ya está registrado")
     handle_taken = await db.execute(select(User).where(User.handle == payload.handle))
     if handle_taken.scalar_one_or_none():
-        raise HTTPException(409, "Handle already taken")
+        raise HTTPException(409, "El usuario ya está en uso")
     user = User(
         email=payload.email,
         handle=payload.handle,
@@ -59,7 +59,7 @@ async def login(payload: LoginIn, db: Annotated[AsyncSession, Depends(get_db)]):
     res = await db.execute(select(User).where(User.email == payload.email))
     user = res.scalar_one_or_none()
     if not user or not verify_password(payload.password, user.password_hash):
-        raise HTTPException(401, "Invalid email or password")
+        raise HTTPException(401, "Email o contraseña inválidos")
     return TokenOut(access_token=create_access_token(user.id, is_admin=user.is_admin))
 
 
@@ -78,14 +78,14 @@ async def verify_email(
     rs = await db.execute(select(EmailVerification).where(EmailVerification.token == payload.token))
     ev = rs.scalar_one_or_none()
     if not ev:
-        raise HTTPException(404, "Verification token not found")
+        raise HTTPException(404, "Token inválido o expirado")
     if ev.used_at is not None:
-        raise HTTPException(400, "Token already used")
+        raise HTTPException(400, "Token inválido o expirado")
     if ev.expires_at < datetime.now(timezone.utc):
-        raise HTTPException(400, "Token expired — request a new verification email")
+        raise HTTPException(400, "El link de verificación expiró — solicita un nuevo email")
     user = await db.get(User, ev.user_id)
     if not user:
-        raise HTTPException(404, "User no longer exists")
+        raise HTTPException(404, "Usuario no encontrado")
     user.email_verified = True
     user.email_verified_at = datetime.now(timezone.utc)
     ev.used_at = datetime.now(timezone.utc)
@@ -100,7 +100,7 @@ async def resend_verification(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     if user.email_verified:
-        raise HTTPException(400, "Email already verified")
+        raise HTTPException(400, "El email ya fue verificado")
     s = get_settings()
     token = await issue_verification_token(db, user)
     await db.commit()

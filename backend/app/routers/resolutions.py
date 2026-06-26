@@ -70,19 +70,19 @@ async def confirm(
     """
     p = await db.get(ResolutionProposal, proposal_id)
     if not p:
-        raise HTTPException(404, "Proposal not found")
+        raise HTTPException(404, "Propuesta de resolución no encontrada")
     if p.status not in (ResolutionProposalStatus.PENDING, ResolutionProposalStatus.DISPUTED):
-        raise HTTPException(400, f"Proposal already {p.status.value}")
+        raise HTTPException(400, f"La propuesta ya está en estado {p.status.value}")
 
     market = await db.get(Market, p.market_id)
     if not market:
-        raise HTTPException(404, "Market not found")
+        raise HTTPException(404, "Mercado no encontrado")
     if market.status == MarketStatus.RESOLVED:
-        raise HTTPException(400, "Market already resolved")
+        raise HTTPException(400, "El mercado ya está resuelto")
 
     overriding = (p.proposed_outcome is not None and payload.outcome != p.proposed_outcome)
     if overriding and not (payload.note or "").strip():
-        raise HTTPException(400, "Override requires a note explaining the decision")
+        raise HTTPException(400, "Se requiere una nota cuando hay anulación")
 
     if payload.outcome == ResolutionOutcome.VOID:
         await void_market(db, market)
@@ -124,7 +124,7 @@ async def dispute(
     """
     market = await db.get(Market, market_id)
     if not market:
-        raise HTTPException(404, "Market not found")
+        raise HTTPException(404, "Mercado no encontrado")
 
     rs = await db.execute(
         select(ResolutionProposal).where(
@@ -137,11 +137,11 @@ async def dispute(
     )
     p = rs.scalar_one_or_none()
     if not p:
-        raise HTTPException(400, "No active resolution to dispute on this market")
+        raise HTTPException(400, "No hay una resolución activa para disputar en este mercado")
 
     # Window check: only allow disputes before finalization
     if p.finalizes_at and p.finalizes_at < datetime.now(timezone.utc):
-        raise HTTPException(400, "Challenge window has elapsed")
+        raise HTTPException(400, "La ventana para disputar ya expiró")
 
     # Idempotent per user (unique index on proposal_id + user_id)
     existing = await db.execute(
@@ -150,7 +150,7 @@ async def dispute(
         )
     )
     if existing.scalar_one_or_none():
-        raise HTTPException(409, "You've already disputed this proposal")
+        raise HTTPException(409, "Ya disputaste esta propuesta")
 
     db.add(MarketDispute(
         proposal_id=p.id, user_id=user.id,

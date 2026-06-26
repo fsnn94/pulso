@@ -173,8 +173,8 @@ async def rule_wash_trade(db: AsyncSession, settings) -> list[AlertFinding]:
                 severity=AmlSeverity.HIGH if paired >= 50 else AmlSeverity.MEDIUM,
                 market_id=mid,
                 message=(
-                    f"Holds both YES ({yes:.2f} sh) and NO ({no:.2f} sh) in the same market — "
-                    f"net economic position is roughly flat (paired={paired:.2f})."
+                    f"Tiene posiciones YES ({yes:.2f} acc) y NO ({no:.2f} acc) en el mismo mercado — "
+                    f"la posición económica neta es prácticamente plana (emparejado={paired:.2f})."
                 ),
                 evidence={"yes_shares": yes, "no_shares": no, "paired_shares": paired},
                 dedup_key=f"WASH:{uid}:{mid}",
@@ -207,8 +207,8 @@ async def rule_velocity(db: AsyncSession, settings) -> list[AlertFinding]:
             out.append(AlertFinding(
                 user_id=row.buyer_id, rule_code="VELOCITY", severity=severity,
                 message=(
-                    f"Elevated trading velocity: {n} trades and ${notional:,.0f} notional "
-                    f"in the last {settings.aml_velocity_window_minutes} minutes."
+                    f"Velocidad de operación alta: {n} operaciones y ${notional:,.0f} nocional "
+                    f"en los últimos {settings.aml_velocity_window_minutes} minutos."
                 ),
                 evidence={
                     "window_minutes": settings.aml_velocity_window_minutes,
@@ -242,8 +242,8 @@ async def rule_new_account_rush(db: AsyncSession, settings) -> list[AlertFinding
                 user_id=row.id, rule_code="NEW_ACCOUNT_RUSH",
                 severity=AmlSeverity.HIGH,
                 message=(
-                    f"Account is less than {settings.aml_new_account_hours}h old "
-                    f"and has already traded ${float(row.notional):,.0f} across {int(row.n)} trades."
+                    f"La cuenta tiene menos de {settings.aml_new_account_hours}h "
+                    f"y ya operó ${float(row.notional):,.0f} en {int(row.n)} operaciones."
                 ),
                 evidence={
                     "account_age_hours": settings.aml_new_account_hours,
@@ -287,7 +287,7 @@ async def rule_concentration(db: AsyncSession, settings) -> list[AlertFinding]:
             out.append(AlertFinding(
                 user_id=row.buyer_id, rule_code="CONCENTRATION", severity=severity,
                 market_id=row.market_id,
-                message=f"Account is {share*100:.0f}% of this market's 24h volume.",
+                message=f"La cuenta representa el {share*100:.0f}% del volumen 24h de este mercado.",
                 evidence={
                     "share": share, "user_notional": float(row.notional),
                     "market_notional_24h": total,
@@ -319,8 +319,8 @@ async def rule_structuring(db: AsyncSession, settings) -> list[AlertFinding]:
             out.append(AlertFinding(
                 user_id=uid, rule_code="STRUCTURING", severity=AmlSeverity.MEDIUM,
                 message=(
-                    f"{len(sizes)} trades within a ${(hi-lo):.0f} band over the last "
-                    f"{settings.aml_structuring_window_hours}h (avg ${sum(sizes)/len(sizes):.0f})."
+                    f"{len(sizes)} operaciones dentro de una banda de ${(hi-lo):.0f} en las últimas "
+                    f"{settings.aml_structuring_window_hours}h (promedio ${sum(sizes)/len(sizes):.0f})."
                 ),
                 evidence={
                     "trade_count": len(sizes),
@@ -368,7 +368,7 @@ async def rule_rapid_open_close(db: AsyncSession, settings) -> list[AlertFinding
                 user_id=uid, rule_code="RAPID_OPEN_CLOSE",
                 severity=AmlSeverity.MEDIUM, market_id=mid,
                 message=(
-                    f"{d['buys']} opens and {d['sells']} closes of {side.value} in this market within 2h."
+                    f"{d['buys']} aperturas y {d['sells']} cierres de {side.value} en este mercado en menos de 2h."
                 ),
                 evidence={"buys": d["buys"], "sells": d["sells"], "side": side.value},
                 dedup_key=f"RAPIDOC:{uid}:{mid}:{side.value}",
@@ -401,7 +401,7 @@ async def rule_reciprocal_pair(db: AsyncSession, settings) -> list[AlertFinding]
                 out.append(AlertFinding(
                     user_id=who, rule_code="RECIPROCAL_PAIR",
                     severity=AmlSeverity.HIGH,
-                    message=f"User has crossed {n} trades against the same counterparty in 24h.",
+                    message=f"El usuario cruzó {n} operaciones con la misma contraparte en 24h.",
                     evidence={"counterparty_id": str(other), "trade_count": n},
                     dedup_key=f"RECIP:{who}:{other}",
                 ))
@@ -463,8 +463,8 @@ async def evaluate_after_trade(db: AsyncSession, user_id: uuid.UUID, market_id: 
             severity=AmlSeverity.HIGH if paired >= 50 else AmlSeverity.MEDIUM,
             market_id=market_id,
             message=(
-                f"Holds both YES ({yes:.2f}) and NO ({no:.2f}) in the same market "
-                f"after a recent fill — paired={paired:.2f}."
+                f"Tiene posiciones YES ({yes:.2f}) y NO ({no:.2f}) en el mismo mercado "
+                f"tras una ejecución reciente — emparejado={paired:.2f}."
             ),
             evidence={"yes_shares": yes, "no_shares": no, "paired_shares": paired},
             dedup_key=f"WASH:{user_id}:{market_id}",
@@ -484,7 +484,7 @@ async def evaluate_after_trade(db: AsyncSession, user_id: uuid.UUID, market_id: 
             findings.append(AlertFinding(
                 user_id=user_id, rule_code="VELOCITY",
                 severity=AmlSeverity.MEDIUM,
-                message=f"{n} trades / ${notional:,.0f} in the last {settings.aml_velocity_window_minutes}m.",
+                message=f"{n} operaciones / ${notional:,.0f} en los últimos {settings.aml_velocity_window_minutes}m.",
                 evidence={"trade_count": n, "notional": notional,
                           "window_minutes": settings.aml_velocity_window_minutes},
                 dedup_key=f"VELOCITY:{user_id}:{cutoff.strftime('%Y%m%d%H%M')[:11]}",

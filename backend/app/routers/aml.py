@@ -70,7 +70,7 @@ async def review_alert(
 ):
     a = await db.get(AmlAlert, alert_id)
     if not a:
-        raise HTTPException(404, "Alert not found")
+        raise HTTPException(404, "Alerta AML no encontrada")
     a.status = {
         "ACK":      AmlAlertStatus.ACKED,
         "DISMISS":  AmlAlertStatus.DISMISSED,
@@ -84,7 +84,7 @@ async def review_alert(
         if u:
             u.aml_flag = True
             u.aml_note = (u.aml_note or "") + (
-                f"\n[{datetime.now(timezone.utc).isoformat()}] Escalated: {a.rule_code}"
+                f"\n[{datetime.now(timezone.utc).isoformat()}] Escalado: {a.rule_code}"
             )
     await db.commit()
     await db.refresh(a)
@@ -170,8 +170,8 @@ async def create_mute(
     # Audit trail (visible in /admin/audit/export.csv via Activity table).
     db.add(Activity(
         user_id=payload.user_id, kind="AML_MUTED",
-        note=(f"Rule {payload.rule_code or 'ALL'} muted until "
-              f"{expires_at.isoformat() if expires_at else 'revoked'} by {admin.handle}: {payload.reason}"),
+        note=(f"Regla {payload.rule_code or 'ALL'} silenciada hasta "
+              f"{expires_at.isoformat() if expires_at else 'revocación'} por {admin.handle}: {payload.reason}"),
     ))
     await db.commit()
     await db.refresh(mute)
@@ -191,15 +191,15 @@ async def revoke_mute(
 ):
     m = await db.get(AmlMute, mute_id)
     if not m:
-        raise HTTPException(404, "Mute not found")
+        raise HTTPException(404, "Silenciamiento no encontrado")
     if m.revoked_at is not None:
-        raise HTTPException(400, "Already revoked")
+        raise HTTPException(400, "El silenciamiento ya fue revocado")
     m.revoked_at = datetime.now(timezone.utc)
     m.revoked_by = admin.id
 
     db.add(Activity(
         user_id=m.user_id, kind="AML_MUTE_REVOKED",
-        note=f"Rule {m.rule_code or 'ALL'} mute revoked by {admin.handle}",
+        note=f"Silenciamiento de la regla {m.rule_code or 'ALL'} revocado por {admin.handle}",
     ))
     await db.commit()
     await db.refresh(m)

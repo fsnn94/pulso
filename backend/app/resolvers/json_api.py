@@ -67,13 +67,13 @@ class JsonApiResolver:
         op = cfg.get("comparator", ">=")
         threshold = cfg.get("threshold")
         headers = cfg.get("headers") or {}
-        source_name = cfg.get("source_name") or url or "JSON feed"
+        source_name = cfg.get("source_name") or url or "Feed JSON"
         auto_h = cfg.get("auto_finalize_hours", 24)
 
         if not url or threshold is None:
             return ResolverResult(
                 outcome=None, confidence=0.0,
-                evidence={"error": "missing url or threshold in resolution_config"},
+                evidence={"error": "falta url o threshold en resolution_config"},
                 source_name=source_name, source_url=url,
                 auto_finalize_hours=None,
             )

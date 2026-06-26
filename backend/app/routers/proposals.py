@@ -23,7 +23,7 @@ async def submit_proposal(
 ):
     # avoid clashes with existing markets and pending proposals
     if (await db.execute(select(Market).where(Market.id == payload.slug))).scalar_one_or_none():
-        raise HTTPException(409, "A market with this slug already exists")
+        raise HTTPException(409, "El identificador ya está en uso")
     pending = await db.execute(
         select(MarketProposal).where(
             MarketProposal.slug == payload.slug,
@@ -31,7 +31,7 @@ async def submit_proposal(
         )
     )
     if pending.scalar_one_or_none():
-        raise HTTPException(409, "A pending proposal with this slug already exists")
+        raise HTTPException(409, "Ya existe una propuesta pendiente con este identificador")
 
     p = MarketProposal(
         submitter_id=user.id,

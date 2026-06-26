@@ -12,7 +12,7 @@ class ManualResolver:
             outcome=None,
             confidence=0.0,
             evidence={"instructions": cfg.get("instructions") or market.description},
-            source_name="Manual admin review",
+            source_name="Revisión manual del admin",
             source_url=None,
             auto_finalize_hours=None,
-        )
+            )

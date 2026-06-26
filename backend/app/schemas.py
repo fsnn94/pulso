@@ -14,14 +14,14 @@ from .models import (
 
 # ---------- Auth ----------
 class RegisterIn(BaseModel):
-    email: EmailStr
+    email: str
     handle: str = Field(min_length=2, max_length=40)
     password: str = Field(min_length=6, max_length=128)
     accepted_disclaimer: bool
 
 
 class LoginIn(BaseModel):
-    email: EmailStr
+    email: str
     password: str
 
 
@@ -34,7 +34,7 @@ class TokenOut(BaseModel):
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
-    email: EmailStr
+    email: str
     handle: str
     is_admin: bool
     cash: float
@@ -213,7 +213,7 @@ class AdminUserRow(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
     handle: str
-    email: EmailStr
+    email: str
     cash: float
     email_verified: bool
     country: str | None

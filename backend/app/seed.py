@@ -28,61 +28,79 @@ async def seed_if_empty(db: AsyncSession) -> None:
         db.add(admin)
         await db.flush()
 
-    # Markets: only seed if there are none
-    has_market = (await db.execute(select(Market).limit(1))).scalar_one_or_none()
-    if has_market:
-        await db.commit()
-        return
-
+    # Per-market idempotent seed: each sample is inserted only if its id is missing.
     samples = [
-        ("fed-jun-cut",   "Economics", "Will the Federal Reserve cut rates at the June 2026 FOMC meeting?",
-         "Fed cuts rates in June",
-         "Resolves YES if the Federal Open Market Committee announces a reduction in the target federal funds rate at the meeting concluding June 17, 2026.",
-         datetime(2026, 6, 17, 18, 0, tzinfo=timezone.utc), 0.62),
-        ("gpt-next-2026", "Tech & AI", 'Will OpenAI release a model branded "GPT-6" before December 31, 2026?',
-         "GPT-6 released in 2026",
-         'Resolves YES if OpenAI publicly releases a model under the explicit "GPT-6" name on or before Dec 31, 2026.',
-         datetime(2026, 12, 31, 23, 59, tzinfo=timezone.utc), 0.34),
-        ("btc-150k-q3",   "Crypto", "Will BTC close above $150,000 on any day in Q3 2026?",
-         "BTC > $150K in Q3",
-         "Resolves YES if the Coinbase BTC/USD daily close is at or above $150,000 on any UTC day between July 1 and September 30, 2026.",
+        ("pena-aprob-q3",        "Economics",
+         "¿La aprobación del presidente Santiago Peña superará el 45% en septiembre de 2026?",
+         "Aprobación de Peña > 45% en septiembre",
+         "Resuelve YES si al menos una encuesta nacional reconocida (DataAtenas, Last Decision, MyM, ICA u otra firma con metodología publicada) reporta una aprobación presidencial superior al 45% durante el mes de septiembre de 2026.",
+         datetime(2026, 9, 30, 23, 59, tzinfo=timezone.utc), 0.32),
+
+        ("dolar-blue-1500",      "Economics",
+         "¿El dólar blue en Argentina cerrará por debajo de $1.500 ARS el 30 de septiembre de 2026?",
+         "Dólar blue < $1.500 al 30/9",
+         "Resuelve YES si la cotización del dólar blue publicada por Bluelytics (promedio de venta del día) al cierre del 30 de septiembre de 2026 está por debajo de 1.500 pesos argentinos por dólar estadounidense.",
+         datetime(2026, 9, 30, 23, 59, tzinfo=timezone.utc), 0.28),
+
+        ("bcp-tasa-jul",         "Economics",
+         "¿El Banco Central del Paraguay reducirá la Tasa de Política Monetaria en su reunión de julio de 2026?",
+         "BCP baja la tasa en julio",
+         "Resuelve YES si el Directorio del BCP anuncia una reducción de la Tasa de Política Monetaria en el comunicado oficial posterior a la reunión programada para julio de 2026.",
+         datetime(2026, 7, 31, 23, 59, tzinfo=timezone.utc), 0.55),
+
+        ("olimpia-apertura",     "Sports",
+         "¿Club Olimpia ganará el Torneo Apertura 2026 del fútbol paraguayo?",
+         "Olimpia campeón del Apertura 2026",
+         "Resuelve YES si Club Olimpia se consagra campeón del Torneo Apertura 2026 organizado por la APF al concluir todas las fechas del torneo.",
+         datetime(2026, 7, 15, 23, 59, tzinfo=timezone.utc), 0.42),
+
+        ("cerro-sudam-cuartos",  "Sports",
+         "¿Cerro Porteño llegará a cuartos de final de la Copa Sudamericana 2026?",
+         "Cerro a cuartos de Sudamericana",
+         "Resuelve YES si Cerro Porteño clasifica a la fase de cuartos de final de la CONMEBOL Sudamericana 2026 según los resultados oficiales de la CONMEBOL.",
+         datetime(2026, 9, 30, 23, 59, tzinfo=timezone.utc), 0.36),
+
+        ("argentina-mundial-semis", "Sports",
+         "¿Argentina llegará a las semifinales del Mundial FIFA 2026?",
+         "Argentina a semis del Mundial",
+         "Resuelve YES si la Selección Argentina avanza a la fase de semifinales del Mundial FIFA 2026 según el cuadro oficial publicado por FIFA.",
+         datetime(2026, 7, 10, 23, 59, tzinfo=timezone.utc), 0.48),
+
+        ("btc-150k-q3",          "Crypto",
+         "¿Bitcoin cerrará por encima de USD 150.000 en algún día del Q3 2026?",
+         "BTC > USD 150K en Q3",
+         "Resuelve YES si el cierre diario de BTC/USD en Coinbase es igual o mayor a USD 150.000 en algún día UTC entre el 1 de julio y el 30 de septiembre de 2026.",
          datetime(2026, 9, 30, 23, 59, tzinfo=timezone.utc), 0.41),
-        ("fda-alz",       "Science", "Will the FDA approve a new Alzheimer's therapy in 2026?",
-         "FDA approves new Alzheimer's drug",
-         "Resolves YES if the FDA grants full or accelerated approval to any new molecular entity indicated for Alzheimer's disease in 2026.",
-         datetime(2026, 12, 31, 23, 59, tzinfo=timezone.utc), 0.27),
-        ("lakers-finals", "Sports", "Will the Los Angeles Lakers reach the 2026 NBA Finals?",
-         "Lakers in 2026 NBA Finals",
-         "Resolves YES if the Lakers win the 2026 NBA Western Conference Finals.",
-         datetime(2026, 6, 1, 23, 59, tzinfo=timezone.utc), 0.18),
-        ("atlantic-hurr", "Climate", "Will the 2026 Atlantic hurricane season exceed 14 named storms?",
-         "Above-average Atlantic season",
-         "Resolves YES if NOAA records more than 14 named storms in the Atlantic basin during the 2026 season.",
-         datetime(2026, 11, 30, 23, 59, tzinfo=timezone.utc), 0.71),
-        ("starship-orbit","Space", "Will SpaceX achieve a fully reusable Starship orbital flight in 2026?",
-         "Starship full reuse 2026",
-         "Resolves YES if SpaceX completes an orbital Starship mission in 2026 with both stages recovered intact and verified flight-reusable.",
-         datetime(2026, 12, 31, 23, 59, tzinfo=timezone.utc), 0.38),
-        ("avatar3-2b",    "Culture", "Will Avatar: Fire and Ash gross over $2B worldwide?",
-         "Avatar 3 > $2B box office",
-         "Resolves YES if worldwide theatrical gross exceeds $2,000,000,000 USD per Box Office Mojo within 180 days of wide release.",
-         datetime(2026, 7, 1, 23, 59, tzinfo=timezone.utc), 0.46),
-        ("ai-nobel",      "Tech & AI", "Will the 2026 Nobel Prize in any science category cite AI-driven discovery?",
-         "AI-cited Nobel in 2026",
-         "Resolves YES if the official 2026 Nobel announcements (Physics, Chemistry, Medicine) explicitly credit AI/ML as central methodology.",
-         datetime(2026, 10, 15, 23, 59, tzinfo=timezone.utc), 0.33),
-        ("eth-flippening","Crypto", "Will ETH market cap exceed BTC market cap on any day in 2026?",
-         "ETH flippening in 2026",
-         "Resolves YES if ETH fully diluted market cap exceeds BTC's for at least one full UTC day in 2026 per CoinGecko.",
+
+        ("eth-flippening",       "Crypto",
+         "¿La capitalización de mercado de ETH superará a la de BTC en algún día de 2026?",
+         "Flippening de ETH en 2026",
+         "Resuelve YES si la capitalización de mercado totalmente diluida de ETH supera a la de BTC durante al menos un día UTC completo en 2026 según CoinGecko.",
          datetime(2026, 12, 31, 23, 59, tzinfo=timezone.utc), 0.07),
-        ("world-cup-host","Sports", "Will the 2030 FIFA World Cup host be officially confirmed by Q4 2026?",
-         "2030 World Cup host confirmed",
-         "Resolves YES if FIFA publicly confirms the host nation(s) of the 2030 World Cup on or before December 31, 2026.",
-         datetime(2026, 12, 31, 23, 59, tzinfo=timezone.utc), 0.84),
-        ("fusion-grid",   "Science", "Will any fusion reactor deliver net electricity to a grid in 2026?",
-         "Fusion electricity to grid",
-         "Resolves YES if any operational fusion reactor anywhere in the world delivers net positive electrical power to a public utility grid for any sustained period in 2026.",
-         datetime(2026, 12, 31, 23, 59, tzinfo=timezone.utc), 0.04),
+
+        ("openai-gpt6",          "Tech & AI",
+         '¿OpenAI lanzará un modelo bajo el nombre "GPT-6" antes del 31 de diciembre de 2026?',
+         'OpenAI lanza "GPT-6" en 2026',
+         'Resuelve YES si OpenAI publica un modelo de propósito general bajo el nombre explícito "GPT-6" en o antes del 31 de diciembre de 2026. No cuentan modelos con sufijos como "GPT-5.5" ni versiones de investigación cerradas.',
+         datetime(2026, 12, 31, 23, 59, tzinfo=timezone.utc), 0.34),
+
+        ("anthropic-claude5",    "Tech & AI",
+         "¿Anthropic lanzará un modelo Claude 5 antes del 31 de diciembre de 2026?",
+         "Anthropic lanza Claude 5 en 2026",
+         "Resuelve YES si Anthropic anuncia y pone a disposición pública un modelo bajo el nombre explícito de Claude 5 (Opus, Sonnet, Haiku o equivalente) en o antes del 31 de diciembre de 2026.",
+         datetime(2026, 12, 31, 23, 59, tzinfo=timezone.utc), 0.55),
+
+        ("bizarrap-grammy",      "Culture",
+         "¿Bizarrap ganará al menos un Grammy Latino en la entrega de noviembre de 2026?",
+         "Bizarrap gana Grammy Latino 2026",
+         "Resuelve YES si Bizarrap (solo o como colaborador) gana al menos un premio en cualquier categoría de la ceremonia oficial de los Latin Grammy Awards de noviembre de 2026 según el sitio oficial latingrammy.com.",
+         datetime(2026, 11, 30, 23, 59, tzinfo=timezone.utc), 0.58),
+
+        ("mercosur-ue-vigor",    "Economics",
+         "¿El acuerdo Mercosur-Unión Europea entrará en vigor antes del 31 de diciembre de 2026?",
+         "Mercosur-UE vigente en 2026",
+         "Resuelve YES si el acuerdo de asociación entre el Mercosur y la Unión Europea entra en vigor (aplicación provisional o definitiva) en o antes del 31 de diciembre de 2026 según comunicado oficial de la Comisión Europea o del Mercosur.",
+         datetime(2026, 12, 31, 23, 59, tzinfo=timezone.utc), 0.18),
     ]
 
     # Per-market resolver hints. Auto-resolvable markets get a JSON-API config;
@@ -103,35 +121,46 @@ async def seed_if_empty(db: AsyncSession) -> None:
             "jsonpath": "$.data.market_cap_percentage.eth",
             "comparator": ">",
             "threshold": 50,
-            "source_name": "CoinGecko global market dominance",
+            "source_name": "CoinGecko dominancia global",
             "auto_finalize_hours": 24,
         },
-        "atlantic-hurr": {
+        "dolar-blue-1500": {
             "type": "json_api",
-            "url": "https://www.nhc.noaa.gov/cyclones/",
-            "jsonpath": "$.season_total",
-            "comparator": ">",
-            "threshold": 14,
-            "source_name": "NOAA NHC Atlantic season tally",
-            "auto_finalize_hours": 48,
+            "url": "https://api.bluelytics.com.ar/v2/latest",
+            "jsonpath": "$.blue.value_sell",
+            "comparator": "<",
+            "threshold": 1500,
+            "auto_finalize_hours": 24,
         },
         # LLM-assisted markets: model reads rules + primary sources and
         # proposes YES / NO / VOID — but the proposal NEVER auto-finalizes,
         # admin must confirm.
-        "fda-alz": {
+        "openai-gpt6": {
             "type": "llm_search",
-            "primary_sources": ["fda.gov/drugs/news-events",
-                                "fda.gov/news-events/press-announcements"],
-            "prompt_extras": "Only count new molecular entities (NMEs), not label expansions.",
+            "primary_sources": ["openai.com/blog", "openai.com/news"],
+            "prompt_extras": 'Solo cuenta si el modelo se lanza públicamente con el nombre exacto "GPT-6". No cuentan "GPT-5.5" ni betas privadas.',
         },
-        "ai-nobel": {
+        "anthropic-claude5": {
             "type": "llm_search",
-            "primary_sources": ["nobelprize.org"],
-            "prompt_extras": "VOID if the citation is ambiguous about AI/ML being central methodology.",
+            "primary_sources": ["anthropic.com/news", "anthropic.com/claude"],
+            "prompt_extras": "Solo cuenta un lanzamiento público bajo el nombre Claude 5 (cualquier tier: Opus, Sonnet, Haiku).",
+        },
+        "bizarrap-grammy": {
+            "type": "llm_search",
+            "primary_sources": ["latingrammy.com", "es.wikipedia.org/wiki/Anexo:Premios_Grammy_Latinos_de_2026"],
+            "prompt_extras": "Cuenta cualquier categoría donde Bizarrap aparezca como ganador (individual o como colaborador acreditado).",
+        },
+        "mercosur-ue-vigor": {
+            "type": "llm_search",
+            "primary_sources": ["ec.europa.eu/commission", "mercosur.int"],
+            "prompt_extras": "Cuenta tanto la aplicación provisional como la entrada en vigor definitiva del acuerdo.",
         },
     }
 
     for sid, cat, title, short, desc, closes, p in samples:
+        existing = (await db.execute(select(Market).where(Market.id == sid))).scalar_one_or_none()
+        if existing:
+            continue
         db.add(Market(
             id=sid, category=cat, title=title, short_title=short, description=desc,
             closes_at=closes, current_yes_price=p, status=MarketStatus.OPEN,

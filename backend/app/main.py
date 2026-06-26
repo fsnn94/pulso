@@ -21,10 +21,35 @@ from .ws import router as ws_router
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 
+
+def _run_alembic_upgrade() -> None:
+    """Run "alembic upgrade head" against the configured database URL.
+
+    Errors are logged but do not crash startup: in a research preview we
+    prefer the API to come up even if a migration fails (admin can inspect).
+    """
+    import os
+    import logging
+    from alembic import command
+    from alembic.config import Config
+    log = logging.getLogger("alembic.startup")
+    try:
+        cfg_path = os.path.join(os.path.dirname(__file__), "..", "alembic.ini")
+        cfg = Config(cfg_path)
+        command.upgrade(cfg, "head")
+        log.info("Alembic upgrade head: OK")
+    except Exception as e:
+        log.warning("Alembic upgrade failed (continuing startup): %s", e)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    # Apply Alembic migrations (incremental schema changes beyond create_all).
+    # Runs synchronously in a worker thread to avoid blocking the event loop.
+    await asyncio.to_thread(_run_alembic_upgrade)
 
     s = get_settings()
     if s.seed_on_startup:

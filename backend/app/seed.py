@@ -1,12 +1,12 @@
 """Idempotent seed: admin user + sample markets."""
 from __future__ import annotations
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import get_settings
-from .models import Market, MarketStatus, User
+from .models import Activity, Market, MarketStatus, Position, Side, Trade, User
 from .security import hash_password
 
 
@@ -130,6 +130,7 @@ async def seed_if_empty(db: AsyncSession) -> None:
             "jsonpath": "$.blue.value_sell",
             "comparator": "<",
             "threshold": 1500,
+            "source_name": "Bluelytics dólar blue Argentina",
             "auto_finalize_hours": 24,
         },
         # LLM-assisted markets: model reads rules + primary sources and
@@ -171,4 +172,93 @@ async def seed_if_empty(db: AsyncSession) -> None:
             },
         ))
 
+    await db.flush()
+    await _seed_demo_users(db)
     await db.commit()
+
+
+async def _seed_demo_users(db: AsyncSession) -> None:
+    """Idempotent demo seed: 4 fake users with positions, activity, and recent trades.
+
+    Skipped if any @demo.pulso.app user already exists.
+    """
+    res = await db.execute(select(User).where(User.email.like("%@demo.pulso.app")))
+    if res.first():
+        return
+
+    now = datetime.now(timezone.utc)
+
+    demos = [
+        # (email, handle, full_name, country, has_kyc)
+        ("sofia@demo.pulso.app",   "sofia",   "Sofía Méndez",    "PY", True),
+        ("mateo@demo.pulso.app",   "mateo",   "Mateo Giménez",   "PY", False),
+        ("lucia@demo.pulso.app",   "lucia",   "Lucía Fernández", "AR", True),
+        ("joaquin@demo.pulso.app", "joaquin", "Joaquín Riveros", "PY", True),
+    ]
+
+    users: dict[str, User] = {}
+    for email, handle, full_name, country, has_kyc in demos:
+        u = User(
+            email=email,
+            handle=handle,
+            password_hash=hash_password("demo123"),
+            is_admin=False,
+            cash=10000.0,
+            email_verified=True,
+            email_verified_at=now - timedelta(days=20),
+            full_name=full_name if has_kyc else None,
+            country=country if has_kyc else None,
+            kyc_completed_at=(now - timedelta(days=15)) if has_kyc else None,
+            accepted_research_disclaimer=True,
+        )
+        db.add(u)
+        users[handle] = u
+    await db.flush()
+
+    # (handle, market_id, side, shares, price, hours_ago)
+    demo_trades = [
+        # Sofía — bullish Olimpia, bear Argentina at WC, modest BTC long
+        ("sofia",   "olimpia-apertura",        Side.YES,  60.0, 0.40, 18),
+        ("sofia",   "argentina-mundial-semis", Side.NO,   35.0, 0.55, 12),
+        ("sofia",   "btc-150k-q3",             Side.YES,  25.0, 0.39,  6),
+        # Mateo — skeptical GPT-6, fan de Bizarrap
+        ("mateo",   "openai-gpt6",             Side.NO,   80.0, 0.62, 20),
+        ("mateo",   "bizarrap-grammy",         Side.YES, 120.0, 0.55, 16),
+        ("mateo",   "cerro-sudam-cuartos",     Side.YES,  50.0, 0.38,  8),
+        # Lucía — argentina/crypto, piensa que el blue sube (NO al < 1500)
+        ("lucia",   "dolar-blue-1500",         Side.NO,  100.0, 0.70, 22),
+        ("lucia",   "btc-150k-q3",             Side.YES,  40.0, 0.41, 14),
+        ("lucia",   "eth-flippening",          Side.YES, 200.0, 0.07, 10),
+        ("lucia",   "argentina-mundial-semis", Side.YES,  60.0, 0.48,  4),
+        # Joaquín — diversificado, más conservador
+        ("joaquin", "pena-aprob-q3",           Side.YES,  30.0, 0.30, 19),
+        ("joaquin", "bcp-tasa-jul",            Side.YES,  60.0, 0.53, 15),
+        ("joaquin", "anthropic-claude5",       Side.YES,  45.0, 0.56,  9),
+        ("joaquin", "mercosur-ue-vigor",       Side.YES,  25.0, 0.18,  5),
+        ("joaquin", "olimpia-apertura",        Side.YES,  80.0, 0.42,  2),
+    ]
+
+    for handle, mid, side, shares, price, hrs in demo_trades:
+        u = users[handle]
+        cost = shares * price
+        ts = now - timedelta(hours=hrs)
+
+        db.add(Position(
+            user_id=u.id, market_id=mid, side=side,
+            shares=shares, avg_cost=price, realized_pnl=0.0,
+            updated_at=ts,
+        ))
+        db.add(Activity(
+            user_id=u.id, market_id=mid, kind="FILL",
+            side=side, quantity=shares, price=price, total=-cost,
+            note=f"Compra a mercado: {shares:.0f} contratos @ {price*100:.0f}c",
+            created_at=ts,
+        ))
+        db.add(Trade(
+            market_id=mid, buyer_id=u.id, seller_id=None,
+            side=side, price=price, quantity=shares,
+            created_at=ts,
+        ))
+        u.cash -= cost
+
+    await db.flush()

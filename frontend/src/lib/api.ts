@@ -26,9 +26,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
   if (!res.ok) {
     let detail: any;
-    try { detail = await res.json(); } catch { detail = { detail: res.statusText }; }
+    try { detail = await res.json(); } catch { detail = { detail: "Error de red" }; }
     const raw = detail?.detail;
-    const msg = typeof raw === 'string' ? raw : Array.isArray(raw) ? raw.map((e: any) => e.msg || JSON.stringify(e)).join('; ') : raw ? JSON.stringify(raw) : `HTTP ${res.status}`;
+    const msg = typeof raw === 'string' ? raw : Array.isArray(raw) ? raw.map((e: any) => e.msg || JSON.stringify(e)).join('; ') : raw ? JSON.stringify(raw) : `Error ${res.status}`;
     throw new ApiError(msg, res.status, detail);
   }
   if (res.status === 204) return undefined as unknown as T;

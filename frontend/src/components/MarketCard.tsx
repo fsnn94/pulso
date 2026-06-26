@@ -58,4 +58,7 @@ function Cell({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <div className="text-ink-400 dark:text-ink-500 uppercase tracking-wider text-[10px]">{label}</div>
-      <div className="num font-medium mt-0.5">{value}</div
+      <div className="num font-medium mt-0.5">{value}</div>
+    </div>
+  );
+}

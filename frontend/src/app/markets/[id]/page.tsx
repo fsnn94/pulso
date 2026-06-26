@@ -326,4 +326,8 @@ function ResolutionBanner({ market, onChange }: { market: Market; onChange?: () 
               </button>
             </div>
           </div>
- 
+        </div>
+      )}
+    </div>
+  );
+}

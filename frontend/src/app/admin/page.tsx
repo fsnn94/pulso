@@ -195,4 +195,8 @@ const inp = "w-full h-10 px-3 rounded-lg border border-ink-200 dark:border-ink-8
 function F({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-xs uppercase tracking-wider text-ink-500 dar
+      <span className="block text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">{label}</span>
+      {children}
+    </label>
+  );
+}

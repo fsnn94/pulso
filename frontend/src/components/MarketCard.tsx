@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { Market } from "@/lib/api";
-import { compact, pct } from "@/lib/format";
+import { compact, pct, statusEs } from "@/lib/format";
 import { ProbDial, Sparkline } from "./charts";
 
 export function MarketCard({
@@ -22,7 +22,7 @@ export function MarketCard({
         </span>
         {market.status !== "OPEN" && (
           <span className="text-[10px] font-medium uppercase tracking-wider px-2 py-1 rounded bg-ink-100 dark:bg-ink-800 text-ink-700 dark:text-ink-300">
-            {market.status}
+            {statusEs(market.status)}
           </span>
         )}
       </div>
@@ -58,7 +58,4 @@ function Cell({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <div className="text-ink-400 dark:text-ink-500 uppercase tracking-wider text-[10px]">{label}</div>
-      <div className="num font-medium mt-0.5">{value}</div>
-    </div>
-  );
-}
+      <div className="num font-medium mt-0.5">{value}</div

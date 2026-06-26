@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, Market } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { statusEs, outcomeEs } from "@/lib/format";
 
 const CATEGORIES: { value: string; label: string }[] = [
   { value: "Economics", label: "Economía" },
@@ -109,7 +110,7 @@ export default function AdminPage() {
                   </td>
                   <td className="px-3 py-3 text-ink-600 dark:text-ink-300">{m.category}</td>
                   <td className="px-3 py-3 text-right num">{(m.current_yes_price * 100).toFixed(1)}¢</td>
-                  <td className="px-3 py-3 text-xs">{m.status}{m.resolved_outcome ? ` (${m.resolved_outcome})` : ""}</td>
+                  <td className="px-3 py-3 text-xs">{statusEs(m.status)}{m.resolved_outcome ? ` (${outcomeEs(m.resolved_outcome)})` : ""}</td>
                   <td className="px-3 py-3 text-xs text-ink-500 dark:text-ink-400 num">{new Date(m.closes_at).toLocaleDateString()}</td>
                   <td className="px-5 sm:px-6 py-3 text-right whitespace-nowrap">
                     {m.status !== "RESOLVED" && (
@@ -194,8 +195,4 @@ const inp = "w-full h-10 px-3 rounded-lg border border-ink-200 dark:border-ink-8
 function F({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">{label}</span>
-      {children}
-    </label>
-  );
-}
+      <span className="block text-xs uppercase tracking-wider text-ink-500 dar

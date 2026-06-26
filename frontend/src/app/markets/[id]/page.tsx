@@ -9,7 +9,7 @@ import { useMarketSocket } from "@/lib/ws";
 import { LineChart } from "@/components/charts";
 import { TradePanel } from "@/components/TradePanel";
 import { Icon } from "@/components/Icon";
-import { compact, pct, timeAgo } from "@/lib/format";
+import { compact, pct, timeAgo, statusEs, outcomeEs } from "@/lib/format";
 
 export default function MarketDetailPage() {
   const params = useParams<{ id: string }>();
@@ -72,7 +72,7 @@ export default function MarketDetailPage() {
             </div>
             <div className="ml-auto flex items-center gap-1.5 text-xs text-ink-500 dark:text-ink-400">
               {market.status === "OPEN" && <><span className="w-1.5 h-1.5 bg-yes-500 rounded-full livedot"/>En vivo</>}
-              {market.status !== "OPEN" && <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-ink-100 dark:bg-ink-800">{market.status}</span>}
+              {market.status !== "OPEN" && <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-ink-100 dark:bg-ink-800">{statusEs(market.status)}</span>}
             </div>
           </div>
 
@@ -88,7 +88,7 @@ export default function MarketDetailPage() {
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
             <StatBox label="Volumen 24h" value={compact(market.volume_24h)}/>
             <StatBox label="Liquidez"    value={compact(market.liquidity)}/>
-            <StatBox label="Estado"      value={market.status}/>
+            <StatBox label="Estado"      value={statusEs(market.status)}/>
             <StatBox label="Cierra"      value={new Date(market.closes_at).toLocaleDateString([], { month: "short", day: "numeric" })}/>
           </div>
 
@@ -326,8 +326,4 @@ function ResolutionBanner({ market, onChange }: { market: Market; onChange?: () 
               </button>
             </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
-}
+ 

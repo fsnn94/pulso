@@ -17,3 +17,24 @@ export const timeAgo = (iso: string | number | Date) => {
   return `hace ${Math.floor(s / 86400)}d`;
 };
 export const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
+
+// Spanish labels for Market lifecycle status
+const MARKET_STATUS_ES: Record<string, string> = {
+  OPEN: "Abierto",
+  CLOSED: "Cerrado",
+  PROPOSED: "En revisión",
+  DISPUTED: "Disputado",
+  RESOLVED: "Resuelto",
+  VOIDED: "Nulo",
+};
+export const statusEs = (s: string | null | undefined) =>
+  s ? (MARKET_STATUS_ES[s] ?? s) : "";
+
+// Spanish labels for Market resolved outcome
+const OUTCOME_ES: Record<string, string> = {
+  YES: "SÍ",
+  NO: "NO",
+  VOID: "NULO",
+};
+export const outcomeEs = (s: string | null | undefined) =>
+  s ? (OUTCOME_ES[s] ?? s) : "";

@@ -8,14 +8,14 @@ import { VerificationBanner } from "@/components/VerificationBanner";
 import { Footer } from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "Pulso — research-grade prediction platform",
+  title: "Pulso — plataforma de predicción de grado académico",
   description:
-    "Trade simulated YES/NO positions on questions about the future. Pulso is a forecasting and decision-research tool — not gambling, not a brokerage.",
+    "Opera posiciones simuladas YES/NO sobre preguntas del futuro. Pulso es una herramienta de pronóstico y análisis de decisiones — no es apuestas ni una casa de bolsa.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />

@@ -39,8 +39,8 @@ export default function AdminCashflowPage() {
     }
   });
 
-  if (loading) return <div className="p-12 text-center text-sm text-ink-500">Loading…</div>;
-  if (!user?.is_admin) return <div className="p-12 text-center text-sm text-ink-500">Admins only.</div>;
+  if (loading) return <div className="p-12 text-center text-sm text-ink-500">Cargando...</div>;
+  if (!user?.is_admin) return <div className="p-12 text-center text-sm text-ink-500">Solo para admins.</div>;
 
   const series = useMemo(() => {
     if (!kpi) return [];
@@ -58,34 +58,34 @@ export default function AdminCashflowPage() {
     <div className="view-enter max-w-7xl mx-auto px-4 sm:px-6 py-8 lg:py-12">
       <div className="flex items-end justify-between flex-wrap gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Cashflow overview</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Flujo de caja</h1>
           <p className="text-ink-500 dark:text-ink-400 text-sm mt-1">
-            Live transaction stream + historical aggregates across all markets.
+            Stream de transacciones en vivo + agregados históricos de todos los mercados.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <select value={days} onChange={(e) => setDays(parseInt(e.target.value, 10))}
                   className="h-9 px-3 text-sm rounded-lg border border-ink-200 dark:border-ink-800 bg-transparent">
-            <option value={1}>Last 24h</option>
-            <option value={7}>Last 7 days</option>
-            <option value={30}>Last 30 days</option>
-            <option value={90}>Last 90 days</option>
+            <option value={1}>Últimas 24h</option>
+            <option value={7}>Últimos 7 días</option>
+            <option value={30}>Últimos 30 días</option>
+            <option value={90}>Últimos 90 días</option>
           </select>
           <button onClick={() => exportFor(days)}
                   className="h-9 px-3 rounded-lg border border-ink-200 dark:border-ink-800 text-sm font-medium hover:bg-ink-50 dark:hover:bg-ink-900">
-            Export audit CSV
+            Exportar CSV de auditoría
           </button>
-          <Link href="/admin" className="h-9 px-3 grid place-items-center rounded-lg border border-ink-200 dark:border-ink-800 text-sm">← Admin home</Link>
+          <Link href="/admin" className="h-9 px-3 grid place-items-center rounded-lg border border-ink-200 dark:border-ink-800 text-sm">← Inicio admin</Link>
         </div>
       </div>
 
       {/* KPI tiles */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        <Kpi label="24h volume" value={kpi ? compact(kpi.volume_24h) : "—"}/>
-        <Kpi label="24h trades" value={kpi ? kpi.trades_24h.toLocaleString() : "—"}/>
-        <Kpi label="Active users" value={kpi ? kpi.active_users_24h.toLocaleString() : "—"}/>
-        <Kpi label="Open markets" value={kpi ? kpi.open_markets.toString() : "—"}/>
-        <Kpi label="Pending proposals" value={kpi ? kpi.pending_proposals.toString() : "—"} link="/admin/proposals"/>
+        <Kpi label="Volumen 24h"          value={kpi ? compact(kpi.volume_24h) : "—"}/>
+        <Kpi label="Operaciones 24h"      value={kpi ? kpi.trades_24h.toLocaleString() : "—"}/>
+        <Kpi label="Usuarios activos"     value={kpi ? kpi.active_users_24h.toLocaleString() : "—"}/>
+        <Kpi label="Mercados abiertos"    value={kpi ? kpi.open_markets.toString() : "—"}/>
+        <Kpi label="Propuestas pendientes" value={kpi ? kpi.pending_proposals.toString() : "—"} link="/admin/proposals"/>
       </div>
 
       <div className="grid lg:grid-cols-[1fr_360px] gap-6">
@@ -93,24 +93,24 @@ export default function AdminCashflowPage() {
         <div className="space-y-4">
           <div className="rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-5">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold">Daily volume — last {days} day{days !== 1 ? "s" : ""}</h2>
-              <span className="text-xs text-ink-500 dark:text-ink-400">Refreshes every 30s</span>
+              <h2 className="font-semibold">Volumen diario — últimos {days} día{days !== 1 ? "s" : ""}</h2>
+              <span className="text-xs text-ink-500 dark:text-ink-400">Se actualiza cada 30s</span>
             </div>
             <LineChart data={series.length >= 2 ? series : [{t: Date.now()-1, p: 0},{t: Date.now(), p: 0}]} accent="#A41F13"/>
             {series.length === 0 && (
-              <div className="text-center text-sm text-ink-500 dark:text-ink-400 py-2">No trade data in this range yet.</div>
+              <div className="text-center text-sm text-ink-500 dark:text-ink-400 py-2">Aún no hay datos de operaciones en este rango.</div>
             )}
           </div>
 
           <div className="rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-5">
-            <h2 className="font-semibold mb-3">By category — last 24h</h2>
+            <h2 className="font-semibold mb-3">Por categoría — últimas 24h</h2>
             {kpi?.by_category.length ? (
               <table className="w-full text-sm">
                 <thead className="text-[11px] uppercase tracking-wider text-ink-500 dark:text-ink-400">
                   <tr className="border-b border-ink-100 dark:border-ink-800">
-                    <th className="text-left py-2 font-medium">Category</th>
-                    <th className="text-right py-2 font-medium">Volume</th>
-                    <th className="text-right py-2 font-medium">Trades</th>
+                    <th className="text-left py-2 font-medium">Categoría</th>
+                    <th className="text-right py-2 font-medium">Volumen</th>
+                    <th className="text-right py-2 font-medium">Operaciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -124,7 +124,7 @@ export default function AdminCashflowPage() {
                 </tbody>
               </table>
             ) : (
-              <div className="text-sm text-ink-500 dark:text-ink-400 py-2">No category activity yet.</div>
+              <div className="text-sm text-ink-500 dark:text-ink-400 py-2">Aún no hay actividad por categoría.</div>
             )}
           </div>
         </div>
@@ -132,17 +132,17 @@ export default function AdminCashflowPage() {
         {/* Live tape */}
         <div className="rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-5 lg:max-h-[640px] flex flex-col">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold">Live transaction tape</h2>
+            <h2 className="font-semibold">Cinta de transacciones en vivo</h2>
             <span className="flex items-center gap-1.5 text-xs text-ink-500 dark:text-ink-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-yes-500 livedot"/>Live
+              <span className="w-1.5 h-1.5 rounded-full bg-yes-500 livedot"/>En vivo
             </span>
           </div>
           <div className="grid grid-cols-4 text-[11px] uppercase tracking-wider text-ink-400 dark:text-ink-500 pb-1.5 border-b border-ink-100 dark:border-ink-800">
-            <span>Side</span><span>Price</span><span>Size</span><span className="text-right">Time</span>
+            <span>Lado</span><span>Precio</span><span>Tamaño</span><span className="text-right">Hora</span>
           </div>
           <div className="flex-1 overflow-y-auto">
             {tape.current.length === 0 ? (
-              <div className="text-sm text-ink-500 dark:text-ink-400 py-6 text-center">Waiting for live trades…</div>
+              <div className="text-sm text-ink-500 dark:text-ink-400 py-6 text-center">Esperando operaciones en vivo...</div>
             ) : tape.current.map((t) => (
               <div key={t.id} className="grid grid-cols-4 py-1.5 text-sm num border-b border-ink-50 dark:border-ink-800/60 last:border-0">
                 <span className={t.side === "YES" ? "text-yes-500 font-medium" : "text-no-500 font-medium"}>{t.side}</span>

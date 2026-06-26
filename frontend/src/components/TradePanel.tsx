@@ -70,27 +70,27 @@ export function TradePanel({ market, onTraded }: { market: Market; onTraded?: ()
       setMsg({
         kind: "ok",
         text: o.status === "FILLED"
-          ? `Filled ${o.filled_quantity.toFixed(2)} sh @ ${(((o.avg_fill_price ?? 0) * 100)).toFixed(1)}¢`
+          ? `Ejecutada ${o.filled_quantity.toFixed(2)} contratos @ ${(((o.avg_fill_price ?? 0) * 100)).toFixed(1)}¢`
           : o.status === "PARTIAL"
-            ? `Partial fill ${o.filled_quantity.toFixed(2)} / ${o.quantity.toFixed(2)}`
-            : "Order placed and resting on book",
+            ? `Ejecución parcial ${o.filled_quantity.toFixed(2)} / ${o.quantity.toFixed(2)}`
+            : "Orden colocada y descansando en el libro",
       });
       await refresh();
       onTraded?.();
     } catch (e: any) {
-      setMsg({ kind: "err", text: e?.message ?? "Order failed" });
+      setMsg({ kind: "err", text: e?.message ?? "La orden falló" });
     } finally { setBusy(false); }
   };
 
   if (!user) {
     return (
       <div className="rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-5 text-sm">
-        <div className="font-semibold mb-2">Trade</div>
+        <div className="font-semibold mb-2">Operar</div>
         <p className="text-ink-500 dark:text-ink-400 mb-4">
-          Sign in to trade simulated YES/NO positions on this market.
+          Ingresa para operar posiciones simuladas YES/NO en este mercado.
         </p>
-        <Link href="/login" className="block w-full h-10 grid place-items-center rounded-lg bg-ink-900 text-white dark:bg-white dark:text-ink-900 font-medium">Log in</Link>
-        <Link href="/register" className="block w-full h-10 mt-2 grid place-items-center rounded-lg border border-ink-200 dark:border-ink-700 font-medium">Create an account</Link>
+        <Link href="/login" className="block w-full h-10 grid place-items-center rounded-lg bg-ink-900 text-white dark:bg-white dark:text-ink-900 font-medium">Ingresar</Link>
+        <Link href="/register" className="block w-full h-10 mt-2 grid place-items-center rounded-lg border border-ink-200 dark:border-ink-700 font-medium">Crear cuenta</Link>
       </div>
     );
   }
@@ -98,9 +98,9 @@ export function TradePanel({ market, onTraded }: { market: Market; onTraded?: ()
   if (!user.email_verified) {
     return (
       <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-5 text-sm">
-        <div className="font-semibold mb-2">Verify your email to trade</div>
+        <div className="font-semibold mb-2">Verifica tu email para operar</div>
         <p className="text-ink-500 dark:text-ink-400 mb-4">
-          We sent a verification link to <span className="mono">{user.email}</span>. Trading is locked until you confirm your email.
+          Enviamos un link de verificación a <span className="mono">{user.email}</span>. No podrás operar hasta confirmar tu email.
         </p>
         <button
           onClick={async () => {
@@ -110,12 +110,12 @@ export function TradePanel({ market, onTraded }: { market: Market; onTraded?: ()
                 // Dev convenience: navigate to the link
                 window.location.href = r.verification_link;
               } else {
-                alert("Sent. Check your inbox.");
+                alert("Enviado. Revisa tu bandeja de entrada.");
               }
-            } catch (e: any) { alert(e?.message ?? "Failed"); }
+            } catch (e: any) { alert(e?.message ?? "Falló"); }
           }}
           className="w-full h-10 rounded-lg bg-yellow-500/15 text-yellow-700 dark:text-yellow-500 font-medium hover:bg-yellow-500/25">
-          Resend verification email
+          Reenviar email de verificación
         </button>
       </div>
     );
@@ -124,14 +124,14 @@ export function TradePanel({ market, onTraded }: { market: Market; onTraded?: ()
   return (
     <div className="rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-5 shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold">Trade</h3>
+        <h3 className="font-semibold">Operar</h3>
         <div className="flex bg-ink-50 dark:bg-ink-900 p-0.5 rounded-lg text-xs">
           {(["market", "limit"] as Tab[]).map((t) => (
             <button key={t} onClick={() => setTab(t)}
                     className={`px-2.5 h-7 rounded-md font-medium ${tab === t
                       ? "bg-white dark:bg-ink-800 shadow-sm"
                       : "text-ink-500 dark:text-ink-400 hover:text-ink-900 dark:hover:text-ink-100"}`}>
-              {t === "market" ? "Market" : "Limit"}
+              {t === "market" ? "Mercado" : "Límite"}
             </button>
           ))}
         </div>
@@ -144,43 +144,43 @@ export function TradePanel({ market, onTraded }: { market: Market; onTraded?: ()
 
       {tab === "market" ? (
         <>
-          <Label>Amount (USD)</Label>
+          <Label>Monto (USD)</Label>
           <PrefixInput prefix="$" value={amount} onChange={setAmount} type="number" min="0"/>
           <div className="grid grid-cols-4 gap-1.5 mb-5 mt-2">
             {[10, 25, 100, "Max"].map((v) => (
               <button key={String(v)}
                       onClick={() => setAmount(v === "Max" ? Math.floor(user.cash).toString() : String(v))}
                       className="h-8 text-xs rounded-md bg-ink-50 dark:bg-ink-800 hover:bg-ink-100 dark:hover:bg-ink-700 font-medium">
-                {typeof v === "number" ? `$${v}` : v}
+                {typeof v === "number" ? `$${v}` : v === "Max" ? "Máx" : v}
               </button>
             ))}
           </div>
         </>
       ) : (
         <>
-          <Label>Limit price (0.01–0.99)</Label>
+          <Label>Precio límite (0.01–0.99)</Label>
           <PrefixInput prefix="¢" value={(parseFloat(limitPrice) * 100).toFixed(1)}
                        onChange={(v) => setLimitPrice((parseFloat(v) / 100 || 0).toFixed(2))}
                        type="number" step="0.5" min="1" max="99"/>
-          <Label className="mt-3">Shares</Label>
+          <Label className="mt-3">Contratos</Label>
           <PrefixInput prefix="#" value={shares} onChange={setShares} type="number" min="0"/>
           <p className="text-[11px] text-ink-500 dark:text-ink-400 mt-2 mb-4 leading-relaxed">
-            Limit orders rest on the book and may match against opposite-side limit bids whose prices sum to ≥ $1.00.
+            Las órdenes a límite descansan en el libro y pueden cruzarse contra órdenes del lado opuesto cuyos precios sumen ≥ $1.00.
           </p>
         </>
       )}
 
       <div className="rounded-lg bg-ink-50 dark:bg-ink-900/60 p-3 text-sm space-y-1.5 mb-4">
-        <Row k="Avg price"        v={`${summary.priceCents}¢`} />
-        <Row k="Shares"           v={summary.shares} />
-        <Row k="Cost"             v={usd(summary.cost)} />
-        <Row k="Potential payout" v={usd(summary.payout)} />
-        <Row k="Potential return" v={
+        <Row k="Precio promedio"  v={`${summary.priceCents}¢`} />
+        <Row k="Contratos"        v={summary.shares} />
+        <Row k="Costo"            v={usd(summary.cost)} />
+        <Row k="Pago potencial"   v={usd(summary.payout)} />
+        <Row k="Retorno potencial" v={
           <span className={`num font-medium ${summary.ret >= 0 ? "text-yes-500" : "text-no-500"}`}>
             {usd(summary.ret)} ({summary.retPct.toFixed(0)}%)
           </span>
         } />
-        <Row k="Breakeven" v={`${summary.breakeven}¢`} />
+        <Row k="Punto de equilibrio" v={`${summary.breakeven}¢`} />
       </div>
 
       <button
@@ -189,7 +189,7 @@ export function TradePanel({ market, onTraded }: { market: Market; onTraded?: ()
         className={`w-full h-11 rounded-lg font-semibold text-sm transition
           ${side === "YES" ? "bg-yes-500 hover:bg-yes-600" : "bg-no-500 hover:bg-no-600"}
           text-white disabled:opacity-40 disabled:cursor-not-allowed`}>
-        {busy ? "Placing..." : cantAfford ? "Insufficient virtual cash" : `${tab === "limit" ? "Place limit" : "Buy"} ${side} · ${usd(summary.cost)}`}
+        {busy ? "Enviando..." : cantAfford ? "Saldo virtual insuficiente" : `${tab === "limit" ? "Colocar límite" : "Comprar"} ${side} · ${usd(summary.cost)}`}
       </button>
 
       {msg && (
@@ -199,7 +199,7 @@ export function TradePanel({ market, onTraded }: { market: Market; onTraded?: ()
       )}
 
       <p className="mt-3 text-[11px] leading-relaxed text-ink-500 dark:text-ink-400">
-        Simulated trading using virtual credits. Each share pays $1 if the market resolves on your side, $0 otherwise. Not a security, not gambling.
+        Operaciones simuladas con créditos virtuales. Cada contrato paga $1 si el mercado resuelve a tu favor, $0 en caso contrario. No es un valor ni una apuesta.
       </p>
     </div>
   );

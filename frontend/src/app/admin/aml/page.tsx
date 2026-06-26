@@ -8,13 +8,13 @@ import { useMarketSocket } from "@/lib/ws";
 import { timeAgo } from "@/lib/format";
 
 const RULE_LABELS: Record<string, string> = {
-  WASH_TRADE:       "Wash trade — both sides of same market",
-  VELOCITY:         "Trading velocity / notional spike",
-  NEW_ACCOUNT_RUSH: "New-account rapid trading",
-  CONCENTRATION:    "Dominant share of a single market's 24h volume",
-  STRUCTURING:      "Many trades in a tight notional band",
-  RAPID_OPEN_CLOSE: "Repeated open/close in minutes",
-  RECIPROCAL_PAIR:  "Repeated cross-trades with same counterparty",
+  WASH_TRADE:       "Operación ficticia — ambos lados del mismo mercado",
+  VELOCITY:         "Velocidad de operaciones / pico de nocional",
+  NEW_ACCOUNT_RUSH: "Operaciones rápidas en cuenta nueva",
+  CONCENTRATION:    "Participación dominante del volumen 24h de un mercado",
+  STRUCTURING:      "Muchas operaciones en una banda estrecha de nocional",
+  RAPID_OPEN_CLOSE: "Apertura y cierre repetidos en minutos",
+  RECIPROCAL_PAIR:  "Operaciones cruzadas repetidas con la misma contraparte",
 };
 
 const SEV_BG: Record<AmlSeverity, string> = {
@@ -70,7 +70,7 @@ export default function AdminAmlPage() {
 
   const submitMute = async () => {
     if (!muteFor) return;
-    if (muteReason.trim().length < 5) { alert("Reason must be at least 5 characters."); return; }
+    if (muteReason.trim().length < 5) { alert("El motivo debe tener al menos 5 caracteres."); return; }
     try {
       await api.createAmlMute({
         user_id: muteFor.user_id,
@@ -80,52 +80,52 @@ export default function AdminAmlPage() {
       });
       setMuteFor(null); setMuteReason(""); setMuteScope("rule"); setMuteDuration("24");
       reload();
-    } catch (e: any) { alert(e?.message ?? "Failed"); }
+    } catch (e: any) { alert(e?.message ?? "Falló"); }
   };
 
   const revokeMute = async (id: string) => {
-    if (!confirm("Revoke this mute? Alerts for this rule will start firing again.")) return;
+    if (!confirm("¿Revocar este silenciamiento? Las alertas de esta regla volverán a dispararse.")) return;
     try { await api.revokeAmlMute(id); reload(); }
-    catch (e: any) { alert(e?.message ?? "Failed"); }
+    catch (e: any) { alert(e?.message ?? "Falló"); }
   };
 
-  if (loading) return <div className="p-12 text-center text-sm text-ink-500">Loading…</div>;
-  if (!user?.is_admin) return <div className="p-12 text-center text-sm text-ink-500">Admins only.</div>;
+  if (loading) return <div className="p-12 text-center text-sm text-ink-500">Cargando...</div>;
+  if (!user?.is_admin) return <div className="p-12 text-center text-sm text-ink-500">Solo para admins.</div>;
 
   const decide = async (id: string, action: "ACK" | "DISMISS" | "ESCALATE") => {
     try {
       await api.reviewAmlAlert(id, { action, note: note || undefined });
       setPicked(null); setNote("");
       reload();
-    } catch (e: any) { alert(e?.message ?? "Failed"); }
+    } catch (e: any) { alert(e?.message ?? "Falló"); }
   };
 
   return (
     <div className="view-enter max-w-7xl mx-auto px-4 sm:px-6 py-8 lg:py-12">
       <div className="flex items-end justify-between flex-wrap gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">AML alerts</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Alertas AML</h1>
           <p className="text-ink-500 dark:text-ink-400 text-sm mt-1">
-            Rules engine findings. Acknowledge to mark as reviewed; escalate to flag the underlying user.
+            Hallazgos del motor de reglas. Acusa recibo para marcarlas como revisadas; escala para flaggear al usuario.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={async () => { setScanBusy(true); try { await api.triggerAmlScan(); reload(); } finally { setScanBusy(false); } }}
                   disabled={scanBusy}
                   className="h-9 px-3 rounded-lg border border-ink-200 dark:border-ink-800 text-sm font-medium hover:bg-ink-50 dark:hover:bg-ink-900 disabled:opacity-50">
-            {scanBusy ? "Scanning…" : "Run scan now"}
+            {scanBusy ? "Escaneando..." : "Escanear ahora"}
           </button>
-          <Link href="/admin" className="h-9 px-3 grid place-items-center rounded-lg border border-ink-200 dark:border-ink-800 text-sm">← Admin home</Link>
+          <Link href="/admin" className="h-9 px-3 grid place-items-center rounded-lg border border-ink-200 dark:border-ink-800 text-sm">← Inicio admin</Link>
         </div>
       </div>
 
       {/* Top tiles */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        <Kpi label="Open alerts" value={summary?.open_count.toString() ?? "—"}/>
-        <Kpi label="Critical"    value={(summary?.by_severity.CRITICAL ?? 0).toString()} accent="no"/>
-        <Kpi label="High"        value={(summary?.by_severity.HIGH ?? 0).toString()} accent="no"/>
-        <Kpi label="Medium"      value={(summary?.by_severity.MEDIUM ?? 0).toString()}/>
-        <Kpi label="Low / Info"  value={(((summary?.by_severity.LOW ?? 0) + (summary?.by_severity.INFO ?? 0))).toString()}/>
+        <Kpi label="Alertas abiertas" value={summary?.open_count.toString() ?? "—"}/>
+        <Kpi label="Críticas"         value={(summary?.by_severity.CRITICAL ?? 0).toString()} accent="no"/>
+        <Kpi label="Altas"            value={(summary?.by_severity.HIGH ?? 0).toString()} accent="no"/>
+        <Kpi label="Medias"           value={(summary?.by_severity.MEDIUM ?? 0).toString()}/>
+        <Kpi label="Bajas / Info"     value={(((summary?.by_severity.LOW ?? 0) + (summary?.by_severity.INFO ?? 0))).toString()}/>
       </div>
 
       {/* By-rule chips */}
@@ -135,7 +135,7 @@ export default function AdminAmlPage() {
                   className={`px-3 h-8 rounded-full text-xs font-medium border ${rule === "ALL"
                     ? "bg-ink-900 text-white border-ink-900 dark:bg-white dark:text-ink-900 dark:border-white"
                     : "border-ink-200 dark:border-ink-800 text-ink-600 dark:text-ink-300"}`}>
-            All rules
+            Todas las reglas
           </button>
           {Object.entries(summary.by_rule).map(([r, n]) => (
             <button key={r} onClick={() => setRule(r)}
@@ -162,11 +162,11 @@ export default function AdminAmlPage() {
         </div>
         <select value={sev} onChange={(e) => setSev(e.target.value as AmlSeverity | "ALL")}
                 className="h-8 text-sm rounded-lg border border-ink-200 dark:border-ink-800 bg-transparent px-2">
-          <option value="ALL">All severities</option>
-          <option value="CRITICAL">Critical</option>
-          <option value="HIGH">High</option>
-          <option value="MEDIUM">Medium</option>
-          <option value="LOW">Low</option>
+          <option value="ALL">Todas las severidades</option>
+          <option value="CRITICAL">Crítica</option>
+          <option value="HIGH">Alta</option>
+          <option value="MEDIUM">Media</option>
+          <option value="LOW">Baja</option>
           <option value="INFO">Info</option>
         </select>
       </div>
@@ -175,7 +175,7 @@ export default function AdminAmlPage() {
       {tab === "MUTES" ? (
         mutes.length === 0 ? (
           <div className="rounded-xl border border-ink-100 dark:border-ink-800 px-6 py-14 text-center text-sm text-ink-500 dark:text-ink-400">
-            No active mutes.
+            No hay silenciamientos activos.
           </div>
         ) : (
           <div className="space-y-3">
@@ -184,18 +184,18 @@ export default function AdminAmlPage() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded bg-ink-100 dark:bg-ink-800 text-ink-600 dark:text-ink-300">
-                      {m.rule_code ?? "ALL RULES"}
+                      {m.rule_code ?? "TODAS LAS REGLAS"}
                     </span>
                     <span className="text-[11px] mono break-all text-ink-500 dark:text-ink-400">{m.user_id.slice(0, 8)}…</span>
                   </div>
                   <div className="text-sm mt-1 italic">"{m.reason}"</div>
                   <div className="text-[11px] text-ink-500 dark:text-ink-400 mt-1">
-                    Set {timeAgo(m.created_at)} · expires {m.expires_at ? new Date(m.expires_at).toLocaleString() : "when revoked"}
+                    Activado {timeAgo(m.created_at)} · vence {m.expires_at ? new Date(m.expires_at).toLocaleString() : "al revocarse"}
                   </div>
                 </div>
                 <button onClick={() => revokeMute(m.id)}
                         className="h-9 px-3 rounded-lg border border-ink-200 dark:border-ink-700 text-sm font-medium hover:bg-no-500/10 hover:text-no-500 hover:border-no-500/30">
-                  Revoke
+                  Revocar
                 </button>
               </div>
             ))}
@@ -203,7 +203,7 @@ export default function AdminAmlPage() {
         )
       ) : items.length === 0 ? (
         <div className="rounded-xl border border-ink-100 dark:border-ink-800 px-6 py-14 text-center text-sm text-ink-500 dark:text-ink-400">
-          No {tab.toLowerCase()} alerts.
+          No hay alertas en {tab.toLowerCase()}.
         </div>
       ) : (
         <div className="space-y-3">
@@ -224,11 +224,11 @@ export default function AdminAmlPage() {
               <div className="text-xs text-ink-500 dark:text-ink-400 mb-1">{RULE_LABELS[a.rule_code] ?? a.rule_code}</div>
               <div className="text-sm leading-relaxed">{a.message}</div>
               <div className="text-[11px] text-ink-500 dark:text-ink-400 mt-2 mono break-all">
-                user: {a.user_id}
+                usuario: {a.user_id}
               </div>
               {a.evidence && Object.keys(a.evidence).length > 0 && (
                 <details className="mt-2">
-                  <summary className="text-xs text-ink-500 dark:text-ink-400 cursor-pointer">Evidence</summary>
+                  <summary className="text-xs text-ink-500 dark:text-ink-400 cursor-pointer">Evidencia</summary>
                   <pre className="text-[11px] mono mt-1 p-3 rounded bg-ink-50 dark:bg-ink-900 overflow-x-auto">{JSON.stringify(a.evidence, null, 2)}</pre>
                 </details>
               )}
@@ -236,23 +236,23 @@ export default function AdminAmlPage() {
                 <div className="mt-3 flex flex-wrap gap-2 pt-3 border-t border-ink-100 dark:border-ink-800">
                   <button onClick={() => setPicked({ ...a })}
                           className="h-8 px-3 rounded-md border border-ink-200 dark:border-ink-700 text-xs font-medium hover:bg-ink-50 dark:hover:bg-ink-800">
-                    Review with note…
+                    Revisar con nota...
                   </button>
                   <button onClick={() => decide(a.id, "ACK")}
                           className="h-8 px-3 rounded-md bg-ink-100 dark:bg-ink-800 text-xs font-medium hover:bg-ink-200 dark:hover:bg-ink-700">
-                    Acknowledge
+                    Acusar recibo
                   </button>
                   <button onClick={() => decide(a.id, "DISMISS")}
                           className="h-8 px-3 rounded-md text-xs font-medium hover:bg-ink-50 dark:hover:bg-ink-900 text-ink-500">
-                    Dismiss (false positive)
+                    Descartar (falso positivo)
                   </button>
                   <button onClick={() => decide(a.id, "ESCALATE")}
                           className="h-8 px-3 rounded-md bg-no-500/15 text-no-500 hover:bg-no-500/25 text-xs font-medium">
-                    Escalate — flag user
+                    Escalar — flaggear usuario
                   </button>
                   <button onClick={() => setMuteFor({ user_id: a.user_id, rule_code: a.rule_code })}
                           className="ml-auto h-8 px-3 rounded-md border border-ink-200 dark:border-ink-700 text-xs font-medium hover:bg-ink-50 dark:hover:bg-ink-800">
-                    Mute…
+                    Silenciar...
                   </button>
                 </div>
               ) : (
@@ -273,13 +273,13 @@ export default function AdminAmlPage() {
             <h3 className="font-semibold mb-1">{picked.rule_code}</h3>
             <p className="text-sm text-ink-500 dark:text-ink-400 mb-3">{picked.message}</p>
             <textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)}
-                      placeholder="Review note (kept on the alert and surfaced if escalated)…"
+                      placeholder="Nota de revisión (queda registrada en la alerta y se muestra si se escala)..."
                       className="w-full px-3 py-2 rounded-lg border border-ink-200 dark:border-ink-800 bg-transparent text-sm"/>
             <div className="flex flex-wrap justify-end gap-2 mt-3">
-              <button onClick={() => { setPicked(null); setNote(""); }} className="h-9 px-3 rounded-lg border border-ink-200 dark:border-ink-700 text-sm">Cancel</button>
-              <button onClick={() => decide(picked.id, "DISMISS")} className="h-9 px-3 rounded-lg text-sm font-medium hover:bg-ink-50 dark:hover:bg-ink-800">Dismiss</button>
-              <button onClick={() => decide(picked.id, "ACK")} className="h-9 px-3 rounded-lg bg-ink-100 dark:bg-ink-800 text-sm font-medium">Acknowledge</button>
-              <button onClick={() => decide(picked.id, "ESCALATE")} className="h-9 px-3 rounded-lg bg-no-500 text-white text-sm font-medium">Escalate</button>
+              <button onClick={() => { setPicked(null); setNote(""); }} className="h-9 px-3 rounded-lg border border-ink-200 dark:border-ink-700 text-sm">Cancelar</button>
+              <button onClick={() => decide(picked.id, "DISMISS")} className="h-9 px-3 rounded-lg text-sm font-medium hover:bg-ink-50 dark:hover:bg-ink-800">Descartar</button>
+              <button onClick={() => decide(picked.id, "ACK")} className="h-9 px-3 rounded-lg bg-ink-100 dark:bg-ink-800 text-sm font-medium">Acusar recibo</button>
+              <button onClick={() => decide(picked.id, "ESCALATE")} className="h-9 px-3 rounded-lg bg-no-500 text-white text-sm font-medium">Escalar</button>
             </div>
           </div>
         </div>
@@ -289,46 +289,46 @@ export default function AdminAmlPage() {
       {muteFor && (
         <div className="fixed inset-0 z-50 bg-black/50 grid place-items-center p-4" onClick={() => setMuteFor(null)}>
           <div className="bg-white dark:bg-ink-900 rounded-xl p-5 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-semibold mb-1">Mute AML alerts</h3>
+            <h3 className="font-semibold mb-1">Silenciar alertas AML</h3>
             <p className="text-xs text-ink-500 dark:text-ink-400 mb-4">
-              Suppress future findings for this user. The audit trail still records the suppression.
+              Suprime futuros hallazgos para este usuario. El registro de auditoría sigue documentando la supresión.
             </p>
 
-            <label className="block text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">Scope</label>
+            <label className="block text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">Alcance</label>
             <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
               <button onClick={() => setMuteScope("rule")}
                       className={`h-10 rounded-lg border font-medium ${muteScope === "rule"
                         ? "bg-ink-900 text-white border-ink-900 dark:bg-white dark:text-ink-900 dark:border-white"
                         : "border-ink-200 dark:border-ink-700"}`}>
-                Only {muteFor.rule_code}
+                Solo {muteFor.rule_code}
               </button>
               <button onClick={() => setMuteScope("all")}
                       className={`h-10 rounded-lg border font-medium ${muteScope === "all"
                         ? "bg-ink-900 text-white border-ink-900 dark:bg-white dark:text-ink-900 dark:border-white"
                         : "border-ink-200 dark:border-ink-700"}`}>
-                All rules for this user
+                Todas las reglas para este usuario
               </button>
             </div>
 
-            <label className="block text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">Duration</label>
+            <label className="block text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">Duración</label>
             <select value={muteDuration} onChange={(e) => setMuteDuration(e.target.value as any)}
                     className="w-full h-10 px-3 rounded-lg border border-ink-200 dark:border-ink-700 bg-transparent text-sm mb-3">
-              <option value="24">24 hours</option>
-              <option value="168">7 days</option>
-              <option value="720">30 days</option>
-              <option value="forever">Until revoked</option>
+              <option value="24">24 horas</option>
+              <option value="168">7 días</option>
+              <option value="720">30 días</option>
+              <option value="forever">Hasta revocarse</option>
             </select>
 
-            <label className="block text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">Reason (required, audit-logged)</label>
+            <label className="block text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">Motivo (obligatorio, queda en auditoría)</label>
             <textarea rows={3} value={muteReason} onChange={(e) => setMuteReason(e.target.value)}
-                      placeholder="e.g. Verified market maker for ABC, expected high velocity"
+                      placeholder="ej. Market maker verificado de ABC, alta velocidad esperada"
                       className="w-full px-3 py-2 rounded-lg border border-ink-200 dark:border-ink-700 bg-transparent text-sm"/>
             <div className="flex justify-end gap-2 mt-3">
               <button onClick={() => { setMuteFor(null); setMuteReason(""); }}
-                      className="h-9 px-3 rounded-lg border border-ink-200 dark:border-ink-700 text-sm">Cancel</button>
+                      className="h-9 px-3 rounded-lg border border-ink-200 dark:border-ink-700 text-sm">Cancelar</button>
               <button onClick={submitMute} disabled={muteReason.trim().length < 5}
                       className="h-9 px-3 rounded-lg bg-ink-900 text-white dark:bg-white dark:text-ink-900 text-sm font-medium disabled:opacity-50">
-                Mute
+                Silenciar
               </button>
             </div>
           </div>

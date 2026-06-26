@@ -41,14 +41,14 @@ export default function MarketDetailPage() {
     }
   }, { markets: [id] });
 
-  if (!market) return <div className="p-12 text-center text-sm text-ink-500">Loading…</div>;
+  if (!market) return <div className="p-12 text-center text-sm text-ink-500">Cargando...</div>;
 
   const lastChange = history.length > 1 ? history[history.length - 1].p - history[0].p : 0;
 
   return (
     <div className="view-enter max-w-7xl mx-auto px-4 sm:px-6 py-6 lg:py-10">
       <div className="text-sm text-ink-500 dark:text-ink-400 mb-4 flex items-center gap-2">
-        <Link href="/" className="hover:text-ink-900 dark:hover:text-ink-100">Markets</Link>
+        <Link href="/" className="hover:text-ink-900 dark:hover:text-ink-100">Mercados</Link>
         <Icon name="chevron-right" className="w-3.5 h-3.5"/>
         <span>{market.category}</span>
         <Icon name="chevron-right" className="w-3.5 h-3.5"/>
@@ -65,13 +65,13 @@ export default function MarketDetailPage() {
           <div className="mt-6 flex items-baseline gap-4 flex-wrap">
             <div className="text-5xl sm:text-6xl font-semibold num tracking-tight">{pct(market.current_yes_price, 1)}</div>
             <div className="text-sm">
-              <span className="text-ink-500 dark:text-ink-400">YES probability</span>
+              <span className="text-ink-500 dark:text-ink-400">Probabilidad YES</span>
               <span className={`ml-3 num font-medium ${lastChange >= 0 ? "text-yes-500" : "text-no-500"}`}>
                 {lastChange >= 0 ? "+" : ""}{(lastChange * 100).toFixed(1)}pp 30m
               </span>
             </div>
             <div className="ml-auto flex items-center gap-1.5 text-xs text-ink-500 dark:text-ink-400">
-              {market.status === "OPEN" && <><span className="w-1.5 h-1.5 bg-yes-500 rounded-full livedot"/>Live</>}
+              {market.status === "OPEN" && <><span className="w-1.5 h-1.5 bg-yes-500 rounded-full livedot"/>En vivo</>}
               {market.status !== "OPEN" && <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-ink-100 dark:bg-ink-800">{market.status}</span>}
             </div>
           </div>
@@ -80,26 +80,26 @@ export default function MarketDetailPage() {
 
           <div className="mt-6 rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-4 sm:p-5">
             <div className="flex items-center justify-between mb-2">
-              <div className="text-sm text-ink-500 dark:text-ink-400">Probability trend</div>
+              <div className="text-sm text-ink-500 dark:text-ink-400">Tendencia de probabilidad</div>
             </div>
             <LineChart data={history} accent="#A41F13"/>
           </div>
 
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <StatBox label="24h volume" value={compact(market.volume_24h)}/>
-            <StatBox label="Liquidity"  value={compact(market.liquidity)}/>
-            <StatBox label="Status"     value={market.status}/>
-            <StatBox label="Closes"     value={new Date(market.closes_at).toLocaleDateString([], { month: "short", day: "numeric" })}/>
+            <StatBox label="Volumen 24h" value={compact(market.volume_24h)}/>
+            <StatBox label="Liquidez"    value={compact(market.liquidity)}/>
+            <StatBox label="Estado"      value={market.status}/>
+            <StatBox label="Cierra"      value={new Date(market.closes_at).toLocaleDateString([], { month: "short", day: "numeric" })}/>
           </div>
 
           <div className="mt-6 rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-5 sm:p-6">
-            <h2 className="font-semibold mb-2">About this market</h2>
+            <h2 className="font-semibold mb-2">Sobre este mercado</h2>
             <p className="text-sm leading-relaxed text-ink-600 dark:text-ink-300">{market.description}</p>
             <div className="mt-4 grid sm:grid-cols-2 gap-3 text-sm">
-              <KV k="Resolves on" v={new Date(market.closes_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}/>
-              <KV k="Resolution source" v={market.resolution_source}/>
-              <KV k="Settlement" v="Auto on resolution"/>
-              <KV k="Market ID" v={market.id} mono/>
+              <KV k="Resuelve el" v={new Date(market.closes_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}/>
+              <KV k="Fuente de resolución" v={market.resolution_source}/>
+              <KV k="Liquidación" v="Automática al resolverse"/>
+              <KV k="ID de mercado" v={market.id} mono/>
             </div>
           </div>
 
@@ -137,12 +137,12 @@ function BookView({ book }: { book: Book }) {
   return (
     <div className="mt-6 rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-5 sm:p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold">Order book</h2>
-        <span className="text-xs text-ink-500 dark:text-ink-400">Top 5 levels</span>
+        <h2 className="font-semibold">Libro de órdenes</h2>
+        <span className="text-xs text-ink-500 dark:text-ink-400">Top 5 niveles</span>
       </div>
       <div className="grid sm:grid-cols-2 gap-6">
-        <Side label="YES bids" data={book.yes_bids} color="text-yes-500"/>
-        <Side label="NO bids"  data={book.no_bids}  color="text-no-500"/>
+        <Side label="Ofertas YES" data={book.yes_bids} color="text-yes-500"/>
+        <Side label="Ofertas NO"  data={book.no_bids}  color="text-no-500"/>
       </div>
     </div>
   );
@@ -154,10 +154,10 @@ function Side({ label, data, color }: { label: string; data: { price: number; si
     <div>
       <div className={`text-xs font-semibold mb-2 ${color}`}>{label}</div>
       <div className="grid grid-cols-2 text-[11px] uppercase tracking-wider text-ink-400 dark:text-ink-500 pb-1.5 border-b border-ink-100 dark:border-ink-800">
-        <span>Price ¢</span><span className="text-right">Size</span>
+        <span>Precio ¢</span><span className="text-right">Tamaño</span>
       </div>
       {data.length === 0 ? (
-        <div className="py-2 text-xs text-ink-500">No resting orders</div>
+        <div className="py-2 text-xs text-ink-500">Sin órdenes en el libro</div>
       ) : data.map((r, i) => (
         <div key={i} className="relative grid grid-cols-2 text-sm py-1 num">
           <div className="absolute inset-y-0 right-0 bg-ink-50 dark:bg-ink-800/40" style={{ width: `${(r.size / max) * 60}%` }}/>
@@ -172,12 +172,12 @@ function Side({ label, data, color }: { label: string; data: { price: number; si
 function TradesView({ trades }: { trades: Trade[] }) {
   return (
     <div className="mt-6 rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-5 sm:p-6">
-      <h2 className="font-semibold mb-3">Recent trades</h2>
+      <h2 className="font-semibold mb-3">Operaciones recientes</h2>
       <div className="grid grid-cols-4 text-[11px] uppercase tracking-wider text-ink-400 dark:text-ink-500 pb-1.5 border-b border-ink-100 dark:border-ink-800">
-        <span>Side</span><span>Price</span><span>Size</span><span className="text-right">Time</span>
+        <span>Lado</span><span>Precio</span><span>Tamaño</span><span className="text-right">Hora</span>
       </div>
       {trades.length === 0 ? (
-        <div className="py-4 text-xs text-ink-500">No trades yet.</div>
+        <div className="py-4 text-xs text-ink-500">Aún no hay operaciones.</div>
       ) : trades.slice(0, 12).map((t) => (
         <div key={t.id} className="grid grid-cols-4 py-1.5 text-sm num border-b border-ink-50 dark:border-ink-800/60 last:border-0">
           <span className={t.side === "YES" ? "text-yes-500 font-medium" : "text-no-500 font-medium"}>{t.side}</span>
@@ -196,7 +196,7 @@ function TradesView({ trades }: { trades: Trade[] }) {
 function untilFinalize(iso: string | null): string {
   if (!iso) return "—";
   const ms = new Date(iso).getTime() - Date.now();
-  if (ms <= 0) return "ready";
+  if (ms <= 0) return "listo";
   const h = Math.floor(ms / 3_600_000);
   const m = Math.floor((ms % 3_600_000) / 60_000);
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
@@ -230,10 +230,10 @@ function ResolutionBanner({ market, onChange }: { market: Market; onChange?: () 
     const o = market.resolved_outcome;
     return (
       <div className={`mt-6 rounded-xl border p-4 ${o === "YES" ? "border-yes-500/30 bg-yes-500/5" : "border-no-500/30 bg-no-500/5"}`}>
-        <div className="text-xs uppercase tracking-wider font-semibold mb-0.5">Resolved {o}</div>
+        <div className="text-xs uppercase tracking-wider font-semibold mb-0.5">Resuelto {o}</div>
         <div className="text-sm text-ink-600 dark:text-ink-300">
-          {o === "YES" ? "YES holders were paid $1 per share." : "NO holders were paid $1 per share."}
-          {market.resolved_at && <> Settled {new Date(market.resolved_at).toLocaleString()}.</>}
+          {o === "YES" ? "Los tenedores de YES recibieron $1 por contrato." : "Los tenedores de NO recibieron $1 por contrato."}
+          {market.resolved_at && <> Liquidado el {new Date(market.resolved_at).toLocaleString()}.</>}
         </div>
       </div>
     );
@@ -242,10 +242,10 @@ function ResolutionBanner({ market, onChange }: { market: Market; onChange?: () 
   if (market.status === "VOIDED") {
     return (
       <div className="mt-6 rounded-xl border border-ink-300 dark:border-ink-700 bg-ink-50 dark:bg-ink-900 p-4">
-        <div className="text-xs uppercase tracking-wider font-semibold mb-0.5">Market voided</div>
+        <div className="text-xs uppercase tracking-wider font-semibold mb-0.5">Mercado nulo</div>
         <div className="text-sm text-ink-600 dark:text-ink-300">
-          Every open position was refunded at avg cost — net P&L zero.
-          {market.resolved_at && <> Settled {new Date(market.resolved_at).toLocaleString()}.</>}
+          Cada posición abierta fue reembolsada a su costo promedio — P&L neto cero.
+          {market.resolved_at && <> Liquidado el {new Date(market.resolved_at).toLocaleString()}.</>}
         </div>
       </div>
     );
@@ -254,8 +254,8 @@ function ResolutionBanner({ market, onChange }: { market: Market; onChange?: () 
   if (market.status === "CLOSED" && !proposal) {
     return (
       <div className="mt-6 rounded-xl border border-ink-200 dark:border-ink-700 bg-ink-50 dark:bg-ink-900 p-4">
-        <div className="text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400 font-semibold mb-0.5">Market closed</div>
-        <div className="text-sm">Trading has stopped. Awaiting resolver — admin review pending.</div>
+        <div className="text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400 font-semibold mb-0.5">Mercado cerrado</div>
+        <div className="text-sm">Las operaciones se detuvieron. A la espera del resolutor — pendiente de revisión por admin.</div>
       </div>
     );
   }
@@ -269,7 +269,7 @@ function ResolutionBanner({ market, onChange }: { market: Market; onChange?: () 
       await api.disputeMarket(market.id, { reason: reason.trim() });
       setOpen(false); setReason("");
       onChange?.();
-    } catch (e: any) { alert(e?.message ?? "Failed"); }
+    } catch (e: any) { alert(e?.message ?? "Falló"); }
     finally { setBusy(false); }
   };
 
@@ -283,27 +283,27 @@ function ResolutionBanner({ market, onChange }: { market: Market; onChange?: () 
       <div className="flex flex-wrap items-start gap-3 justify-between">
         <div>
           <div className="text-xs uppercase tracking-wider font-semibold mb-0.5">
-            {isDisputed ? "Disputed — under admin review" : "Resolution proposed"}
+            {isDisputed ? "En disputa — bajo revisión de admin" : "Resolución propuesta"}
           </div>
           <div className="text-sm">
             {outcome ? (
               <>
-                Resolver proposes <span className={`font-semibold ${outcome === "YES" ? "text-yes-500" : "text-no-500"}`}>{outcome}</span>{" "}
-                <span className="text-ink-500 dark:text-ink-400">from {proposal.source_name}.</span>
+                El resolutor propone <span className={`font-semibold ${outcome === "YES" ? "text-yes-500" : "text-no-500"}`}>{outcome}</span>{" "}
+                <span className="text-ink-500 dark:text-ink-400">según {proposal.source_name}.</span>
               </>
             ) : (
-              <span className="text-ink-500 dark:text-ink-400">No automatic decision — admin manual review.</span>
+              <span className="text-ink-500 dark:text-ink-400">Sin decisión automática — revisión manual del admin.</span>
             )}
           </div>
           <div className="text-xs text-ink-500 dark:text-ink-400 mt-1">
-            {proposal.finalizes_at && !isDisputed && <>Auto-finalizes in <span className="num">{untilFinalize(proposal.finalizes_at)}</span> unless disputed.</>}
-            {proposal.dispute_count > 0 && <> · {proposal.dispute_count} dispute{proposal.dispute_count !== 1 ? "s" : ""}.</>}
+            {proposal.finalizes_at && !isDisputed && <>Se finaliza automáticamente en <span className="num">{untilFinalize(proposal.finalizes_at)}</span> salvo disputa.</>}
+            {proposal.dispute_count > 0 && <> · {proposal.dispute_count} disputa{proposal.dispute_count !== 1 ? "s" : ""}.</>}
           </div>
         </div>
         {user && user.email_verified && !isDisputed && proposal.proposed_outcome && (
           <button onClick={() => setOpen(true)}
                   className="h-9 px-3 rounded-lg border border-no-500/30 text-no-500 text-sm font-medium hover:bg-no-500/10">
-            Dispute
+            Disputar
           </button>
         )}
       </div>
@@ -311,18 +311,18 @@ function ResolutionBanner({ market, onChange }: { market: Market; onChange?: () 
       {open && (
         <div className="fixed inset-0 z-50 bg-black/50 grid place-items-center p-4" onClick={() => setOpen(false)}>
           <div className="bg-white dark:bg-ink-900 rounded-xl p-5 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-semibold mb-1">Dispute resolution</h3>
+            <h3 className="font-semibold mb-1">Disputar resolución</h3>
             <p className="text-xs text-ink-500 dark:text-ink-400 mb-3">
-              Explain why the proposed outcome is wrong. A single dispute freezes auto-finalization and routes the market to an admin.
+              Explica por qué el resultado propuesto es incorrecto. Una sola disputa congela la finalización automática y deriva el mercado a un admin.
             </p>
             <textarea rows={4} value={reason} onChange={(e) => setReason(e.target.value)}
-                      placeholder="What did the resolver get wrong? Provide a source if you have one."
+                      placeholder="¿En qué se equivocó el resolutor? Incluye una fuente si la tienes."
                       className="w-full px-3 py-2 rounded-lg border border-ink-200 dark:border-ink-800 bg-transparent text-sm mb-3"/>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setOpen(false)} className="h-9 px-3 rounded-lg border border-ink-200 dark:border-ink-700 text-sm">Cancel</button>
+              <button onClick={() => setOpen(false)} className="h-9 px-3 rounded-lg border border-ink-200 dark:border-ink-700 text-sm">Cancelar</button>
               <button onClick={submit} disabled={busy || reason.trim().length < 10}
                       className="h-9 px-3 rounded-lg bg-no-500 text-white text-sm font-medium disabled:opacity-50">
-                {busy ? "Submitting..." : "File dispute"}
+                {busy ? "Enviando..." : "Presentar disputa"}
               </button>
             </div>
           </div>

@@ -11,9 +11,9 @@ export const compact = (n: number): string => {
 export const timeAgo = (iso: string | number | Date) => {
   const ts = new Date(iso).getTime();
   const s = Math.floor((Date.now() - ts) / 1000);
-  if (s < 60)    return `${s}s ago`;
-  if (s < 3600)  return `${Math.floor(s / 60)}m ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
-  return `${Math.floor(s / 86400)}d ago`;
+  if (s < 60)    return `hace ${s}s`;
+  if (s < 3600)  return `hace ${Math.floor(s / 60)}m`;
+  if (s < 86400) return `hace ${Math.floor(s / 3600)}h`;
+  return `hace ${Math.floor(s / 86400)}d`;
 };
 export const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));

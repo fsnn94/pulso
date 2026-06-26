@@ -22,7 +22,7 @@ export function LineChart({
   }, []);
 
   if (!data || data.length === 0) {
-    return <div ref={wrapRef} className="w-full h-[220px] grid place-items-center text-xs text-ink-400 dark:text-ink-500">No data yet</div>;
+    return <div ref={wrapRef} className="w-full h-[220px] grid place-items-center text-xs text-ink-400 dark:text-ink-500">Aún no hay datos</div>;
   }
 
   const padL = showAxes ? 36 : 4;

@@ -17,36 +17,36 @@ export default function LoginPage() {
     e.preventDefault();
     setBusy(true); setErr(null);
     try { await login(email, password); router.push("/"); }
-    catch (e: any) { setErr(e?.message ?? "Login failed"); }
+    catch (e: any) { setErr(e?.message ?? "No se pudo ingresar"); }
     finally { setBusy(false); }
   };
 
   return (
     <div className="max-w-md mx-auto py-12 sm:py-20 px-4 sm:px-6">
-      <h1 className="text-3xl font-semibold tracking-tight mb-2">Welcome back</h1>
+      <h1 className="text-3xl font-semibold tracking-tight mb-2">Bienvenido de nuevo</h1>
       <p className="text-ink-500 dark:text-ink-400 text-sm mb-8">
-        Sign in to your simulated trading account.
+        Ingresa a tu cuenta de operaciones simuladas.
       </p>
       <form onSubmit={submit} className="space-y-4">
         <Field label="Email">
           <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
                  className="w-full h-10 px-3 rounded-lg border border-ink-200 dark:border-ink-800 bg-transparent"/>
         </Field>
-        <Field label="Password">
+        <Field label="Contraseña">
           <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
                  className="w-full h-10 px-3 rounded-lg border border-ink-200 dark:border-ink-800 bg-transparent"/>
         </Field>
         {err && <div className="text-no-500 text-sm">{err}</div>}
         <button disabled={busy} type="submit"
                 className="w-full h-11 rounded-lg bg-ink-900 text-white dark:bg-white dark:text-ink-900 font-medium disabled:opacity-50">
-          {busy ? "Signing in…" : "Sign in"}
+          {busy ? "Ingresando..." : "Ingresar"}
         </button>
       </form>
       <p className="mt-6 text-sm text-ink-500 dark:text-ink-400">
-        New here? <Link href="/register" className="text-accent-500 hover:underline">Create an account</Link>
+        ¿No tienes cuenta? <Link href="/register" className="text-accent-500 hover:underline">Crear cuenta</Link>
       </p>
       <p className="mt-2 text-xs text-ink-500 dark:text-ink-400">
-        Try the seeded admin: <span className="mono">admin@pulso.local / admin123</span>
+        Prueba con el admin de ejemplo: <span className="mono">admin@pulso.local / admin123</span>
       </p>
     </div>
   );

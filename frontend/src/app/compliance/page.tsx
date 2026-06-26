@@ -1,105 +1,107 @@
 import Link from "next/link";
 
-export const metadata = { title: "Compliance — Pulso (Paraguay)" };
+export const metadata = { title: "Cumplimiento — Pulso (Paraguay)" };
 
 export default function CompliancePage() {
   return (
     <article className="max-w-3xl mx-auto px-4 sm:px-6 py-10 lg:py-16 prose-sm sm:prose dark:prose-invert">
-      <p className="text-[11px] font-medium uppercase tracking-wider text-accent-500">Regulatory framework</p>
+      <p className="text-[11px] font-medium uppercase tracking-wider text-accent-500">Marco regulatorio</p>
       <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight mt-1">
-        Pulso & Paraguayan regulation
+        Pulso y la regulación paraguaya
       </h1>
       <p className="text-ink-500 dark:text-ink-400 mt-3 leading-relaxed">
-        Pulso is operated as a <strong>research and education tool</strong>. All trading uses
-        virtual credits — there are no real-money deposits, withdrawals, or payouts. This page
-        documents how that classification interacts with the principal Paraguayan agencies that
-        would regulate a real-money equivalent, and how we'd report to each one if and when
-        Pulso moved to a regulated footing.
+        Pulso opera como una <strong>herramienta de investigación y educación</strong>. Todas las
+        operaciones usan créditos virtuales — no hay depósitos, retiros ni pagos en dinero real.
+        Esta página documenta cómo interactúa esa clasificación con los principales organismos
+        paraguayos que regularían un equivalente con dinero real, y cómo reportaríamos a cada
+        uno si Pulso pasara a un régimen regulado.
       </p>
 
-      <Section title="Status today">
+      <Section title="Estado actual">
         <p>
-          Because no real funds change hands and the platform pays no monetary winnings,
-          Pulso is <strong>not</strong> presently within the perimeter of:
+          Como no se mueven fondos reales y la plataforma no paga ganancias monetarias,
+          Pulso <strong>no</strong> se encuentra hoy dentro del perímetro de:
         </p>
         <ul>
-          <li><strong>CONAJZAR</strong> (Comisión Nacional de Juegos de Azar — gambling regulator). Triggers on games of chance for valuable consideration.</li>
-          <li><strong>CNV</strong> (Comisión Nacional de Valores — securities regulator). Triggers on the public offering of securities and on regulated trading venues.</li>
-          <li><strong>BCP</strong> (Banco Central del Paraguay — payments / FX). Triggers on regulated payments or e-money issuance.</li>
+          <li><strong>CONAJZAR</strong> (Comisión Nacional de Juegos de Azar — regulador del juego). Aplica a juegos de azar por contraprestación de valor.</li>
+          <li><strong>CNV</strong> (Comisión Nacional de Valores — regulador de valores). Aplica a la oferta pública de valores y a mercados regulados.</li>
+          <li><strong>BCP</strong> (Banco Central del Paraguay — pagos / cambios). Aplica a pagos regulados o emisión de dinero electrónico.</li>
         </ul>
         <p>
-          We still apply <strong>defensive compliance hygiene</strong> appropriate to a service that
-          could one day move to a regulated footing: KYC fields, audit-grade activity logging,
-          and reportable transaction exports.
+          Aun así aplicamos <strong>higiene de cumplimiento defensiva</strong> apropiada para un
+          servicio que algún día podría pasar a un régimen regulado: campos de KYC, registro de
+          actividad con calidad de auditoría y exportes de transacciones reportables.
         </p>
       </Section>
 
-      <Section title="If we ever moved to real money — what changes">
+      <Section title="Si pasáramos a dinero real — qué cambia">
         <ul>
           <li>
-            <strong>CONAJZAR</strong> is the most likely supervisor for binary-outcome markets settled
-            in money (Law 1.016/97 framework). Authorization, capital, technical controls, and
-            anti-money-laundering filings would be required.
+            <strong>CONAJZAR</strong> es el supervisor más probable para mercados de resultado binario
+            liquidados en dinero (marco de la Ley 1.016/97). Se requerirían autorización, capital,
+            controles técnicos y reportes antilavado.
           </li>
           <li>
-            <strong>CNV</strong> is relevant if products are characterized as securities, swaps, or
-            derivative contracts (Law 5.810/2017 modernized the securities-market regime).
+            <strong>CNV</strong> es relevante si los productos se caracterizan como valores, swaps o
+            contratos derivados (la Ley 5.810/2017 modernizó el régimen del mercado de valores).
           </li>
           <li>
-            <strong>SEPRELAD</strong> (Secretaría de Prevención de Lavado de Dinero o Bienes) imposes
-            reporting obligations on regulated entities — KYC, beneficial-ownership, suspicious-
-            transaction reports (ROS) — under Law 1.015/97 and successor regulations.
+            <strong>SEPRELAD</strong> (Secretaría de Prevención de Lavado de Dinero o Bienes) impone
+            obligaciones de reporte a las entidades reguladas — KYC, beneficiario final, reportes
+            de operaciones sospechosas (ROS) — bajo la Ley 1.015/97 y normas sucesivas.
           </li>
           <li>
-            <strong>SET</strong> (Subsecretaría de Estado de Tributación) — winnings would be subject to
-            IRACIS/IRP/IVA depending on entity status.
+            <strong>SET</strong> (Subsecretaría de Estado de Tributación) — las ganancias estarían
+            sujetas a IRACIS/IRP/IVA según el estatus de la entidad.
           </li>
         </ul>
       </Section>
 
-      <Section title="Data protection (Law 6534/2020)">
+      <Section title="Protección de datos (Ley 6534/2020)">
         <p>
-          We treat handles, emails, KYC fields, IP addresses, and transaction history as personal
-          data subject to Paraguay's Law 6534/2020 (and any successor data-protection statute).
-          Lawful bases:
+          Tratamos los usuarios, emails, campos de KYC, direcciones IP e historial de
+          transacciones como datos personales sujetos a la Ley 6534/2020 de Paraguay (y a
+          cualquier ley sucesora de protección de datos). Bases legales:
         </p>
         <ul>
-          <li><em>Contract performance</em> — to operate the user's account.</li>
-          <li><em>Legitimate interest</em> — for fraud prevention and platform integrity.</li>
-          <li><em>Legal obligation</em> — to retain records and respond to regulator requests.</li>
+          <li><em>Ejecución contractual</em> — para operar la cuenta del usuario.</li>
+          <li><em>Interés legítimo</em> — para prevención de fraude e integridad de la plataforma.</li>
+          <li><em>Obligación legal</em> — para conservar registros y responder a pedidos de reguladores.</li>
         </ul>
         <p>
-          Users may request access, correction, or deletion of personal data via the in-app
-          compliance form (subject to legal-retention overrides).
+          Los usuarios pueden solicitar acceso, corrección o eliminación de datos personales
+          mediante el formulario de cumplimiento dentro de la app (sujeto a obligaciones legales
+          de retención).
         </p>
       </Section>
 
-      <Section title="Regulator-ready exports">
+      <Section title="Exportes listos para el regulador">
         <p>
-          Admins can produce a regulator-ready audit CSV for any date range from the
-          {" "}<Link href="/admin/cashflow" className="text-accent-500 underline">Cashflow page</Link>.
-          The export includes one row per trade with: trade ID, UTC timestamp, market ID +
-          category, side, price, quantity, notional, and the submitting user's handle, email,
-          country, full name (if provided in KYC), national-ID number, and AML-review flag.
+          Los admins pueden generar un CSV de auditoría listo para el regulador, para cualquier
+          rango de fechas, desde la{" "}
+          <Link href="/admin/cashflow" className="text-accent-500 underline">página de Flujo de caja</Link>.
+          El export incluye una fila por operación con: ID de operación, marca de tiempo UTC,
+          ID de mercado + categoría, lado, precio, cantidad, nocional y el usuario, email, país,
+          nombre completo (si se cargó en KYC), número de documento y bandera de revisión AML.
         </p>
         <p>
-          The format is intended to be ingestible by SEPRELAD-style reporting and CNV
-          record-keeping workflows without further transformation.
+          El formato está pensado para ser ingerible por flujos de reporte tipo SEPRELAD y por
+          los registros que pide la CNV sin transformaciones adicionales.
         </p>
       </Section>
 
-      <Section title="User responsibilities">
+      <Section title="Responsabilidades del usuario">
         <ul>
-          <li>Provide accurate KYC information when prompted. See <Link href="/settings/compliance" className="text-accent-500 underline">your compliance profile</Link>.</li>
-          <li>Do not use the platform for prohibited purposes: structuring transactions to evade reporting, market manipulation, or use of stolen identity.</li>
-          <li>Confirm that the platform is permitted in your jurisdiction before signing up.</li>
+          <li>Proporcionar información KYC veraz cuando se solicite. Ver <Link href="/settings/compliance" className="text-accent-500 underline">tu perfil de cumplimiento</Link>.</li>
+          <li>No usar la plataforma con fines prohibidos: fraccionar operaciones para evadir reportes, manipulación de mercado o uso de identidad ajena.</li>
+          <li>Confirmar que la plataforma esté permitida en tu jurisdicción antes de registrarte.</li>
         </ul>
       </Section>
 
       <p className="text-xs text-ink-500 dark:text-ink-400 mt-12 italic">
-        This page is a plain-language summary intended for general orientation. It is not legal
-        advice. Operating any prediction-market service in Paraguay should be reviewed by
-        licensed Paraguayan counsel before launch.
+        Esta página es un resumen en lenguaje claro con fines de orientación general. No
+        constituye asesoramiento legal. Operar cualquier servicio de mercados de predicción en
+        Paraguay debería ser revisado por asesoría legal paraguaya habilitada antes del lanzamiento.
       </p>
     </article>
   );

@@ -34,12 +34,12 @@ export default function PortfolioPage() {
     return { value, cost, pnl: value - cost, equity: pf.cash + value };
   }, [pf, marketsById]);
 
-  if (loading) return <div className="p-12 text-center text-sm text-ink-500">Loading…</div>;
+  if (loading) return <div className="p-12 text-center text-sm text-ink-500">Cargando...</div>;
   if (!user) return (
     <div className="max-w-md mx-auto py-20 text-center">
-      <h1 className="text-2xl font-semibold mb-2">Sign in to see your portfolio</h1>
-      <p className="text-ink-500 dark:text-ink-400 mb-6 text-sm">Trades you place will appear here once you're signed in.</p>
-      <Link href="/login" className="inline-block h-10 px-4 grid place-items-center rounded-lg bg-ink-900 text-white dark:bg-white dark:text-ink-900 font-medium">Log in</Link>
+      <h1 className="text-2xl font-semibold mb-2">Ingresa para ver tu portafolio</h1>
+      <p className="text-ink-500 dark:text-ink-400 mb-6 text-sm">Las operaciones que realices aparecerán aquí cuando hayas ingresado.</p>
+      <Link href="/login" className="inline-block h-10 px-4 grid place-items-center rounded-lg bg-ink-900 text-white dark:bg-white dark:text-ink-900 font-medium">Ingresar</Link>
     </div>
   );
 
@@ -47,28 +47,28 @@ export default function PortfolioPage() {
     <div className="view-enter max-w-7xl mx-auto px-4 sm:px-6 py-8 lg:py-12">
       <div className="flex items-end justify-between flex-wrap gap-4 mb-8">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">Portfolio</h1>
-          <p className="text-ink-500 dark:text-ink-400 mt-1 text-sm">Your simulated positions, performance, and activity.</p>
+          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">Portafolio</h1>
+          <p className="text-ink-500 dark:text-ink-400 mt-1 text-sm">Tus posiciones simuladas, rendimiento y actividad.</p>
         </div>
         <Link href="/" className="h-10 px-4 grid place-items-center rounded-lg border border-ink-200 dark:border-ink-800 hover:bg-ink-50 dark:hover:bg-ink-900 text-sm font-medium">
-          Find markets
+          Buscar mercados
         </Link>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <Kpi label="Total equity"     value={usd(totals?.equity ?? user.cash)} sub="cash + positions"/>
-        <Kpi label="Cash"             value={usd(user.cash)} sub="virtual credits"/>
-        <Kpi label="Open positions"   value={(pf?.positions.length ?? 0).toString()} sub={`${(pf?.positions.reduce((s, p) => s + p.shares, 0) ?? 0).toFixed(0)} shares`}/>
-        <Kpi label="Unrealized P&L"   value={`${(totals?.pnl ?? 0) >= 0 ? "+" : ""}${usd(totals?.pnl ?? 0)}`}
+        <Kpi label="Patrimonio total"   value={usd(totals?.equity ?? user.cash)} sub="saldo + posiciones"/>
+        <Kpi label="Saldo"              value={usd(user.cash)} sub="créditos virtuales"/>
+        <Kpi label="Posiciones abiertas" value={(pf?.positions.length ?? 0).toString()} sub={`${(pf?.positions.reduce((s, p) => s + p.shares, 0) ?? 0).toFixed(0)} contratos`}/>
+        <Kpi label="P&L no realizado"   value={`${(totals?.pnl ?? 0) >= 0 ? "+" : ""}${usd(totals?.pnl ?? 0)}`}
              accent={(totals?.pnl ?? 0) >= 0 ? "yes" : "no"}
-             sub={totals && totals.cost > 0 ? `${(totals.pnl / totals.cost * 100).toFixed(1)}% on cost` : "—"}/>
+             sub={totals && totals.cost > 0 ? `${(totals.pnl / totals.cost * 100).toFixed(1)}% sobre el costo` : "—"}/>
       </div>
 
-      <Section title={`Open positions (${pf?.positions.length ?? 0})`}>
+      <Section title={`Posiciones abiertas (${pf?.positions.length ?? 0})`}>
         {!pf || pf.positions.length === 0 ? (
-          <Empty body="Buy YES or NO on any market to start your simulated portfolio."/>
+          <Empty body="Compra YES o NO en cualquier mercado para empezar tu portafolio simulado."/>
         ) : (
-          <Table head={["Market", "Side", "Shares", "Avg cost", "Current", "Value", "P&L"]}>
+          <Table head={["Mercado", "Lado", "Contratos", "Costo prom.", "Actual", "Valor", "P&L"]}>
             {pf.positions.map((p) => {
               const m = marketsById[p.market_id];
               const px = m ? (p.side === "YES" ? m.current_yes_price : 1 - m.current_yes_price) : p.avg_cost;
@@ -97,11 +97,11 @@ export default function PortfolioPage() {
         )}
       </Section>
 
-      <Section title={`Open orders (${openOrders.length})`}>
+      <Section title={`Órdenes abiertas (${openOrders.length})`}>
         {openOrders.length === 0 ? (
-          <Empty body="No resting limit orders."/>
+          <Empty body="No tienes órdenes a límite en el libro."/>
         ) : (
-          <Table head={["Market", "Type", "Side", "Limit", "Filled", "Quantity", ""]}>
+          <Table head={["Mercado", "Tipo", "Lado", "Límite", "Ejecutado", "Cantidad", ""]}>
             {openOrders.map((o) => {
               const m = marketsById[o.market_id];
               return (
@@ -117,7 +117,7 @@ export default function PortfolioPage() {
                   <td className="px-5 sm:px-6 py-3 text-right">
                     <button onClick={async () => { await api.cancelOrder(o.id); await refresh(); }}
                             className="h-8 px-3 text-xs font-medium rounded-md border border-ink-200 dark:border-ink-700 hover:bg-ink-50 dark:hover:bg-ink-800">
-                      Cancel
+                      Cancelar
                     </button>
                   </td>
                 </tr>
@@ -127,16 +127,16 @@ export default function PortfolioPage() {
         )}
       </Section>
 
-      <Section title={`Activity (${pf?.activity.length ?? 0})`}>
+      <Section title={`Actividad (${pf?.activity.length ?? 0})`}>
         {!pf || pf.activity.length === 0 ? (
-          <Empty body="Trades and resolutions will appear here."/>
+          <Empty body="Tus operaciones y resoluciones aparecerán aquí."/>
         ) : (
           <div className="divide-y divide-ink-50 dark:divide-ink-800/50">
             {pf.activity.slice(0, 30).map((a) => (
               <div key={a.id} className="flex items-center gap-4 px-5 sm:px-6 py-3 text-sm">
                 <span className="text-[11px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider bg-accent-500/15 text-accent-500">{a.kind}</span>
                 {a.side && <span className={`font-semibold ${a.side === "YES" ? "text-yes-500" : "text-no-500"}`}>{a.side}</span>}
-                {a.quantity !== null && <span className="num">{a.quantity?.toFixed(2)} sh</span>}
+                {a.quantity !== null && <span className="num">{a.quantity?.toFixed(2)} ct</span>}
                 {a.price !== null && <span className="num text-ink-500 dark:text-ink-400">@ {(a.price! * 100).toFixed(1)}¢</span>}
                 {a.market_id && (
                   <Link href={`/markets/${a.market_id}`} className="hidden md:block flex-1 truncate text-ink-700 dark:text-ink-300 hover:text-accent-500 text-left">

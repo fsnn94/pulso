@@ -22,7 +22,7 @@ export default function VerifyEmailPage() {
       setTimeout(() => router.push("/"), 1500);
     }).catch((e) => {
       if (cancel) return;
-      setStatus("err"); setMsg(e?.message ?? "Verification failed");
+      setStatus("err"); setMsg(e?.message ?? "Falló la verificación");
     });
     return () => { cancel = true; };
   }, [token, refresh, router]);
@@ -31,23 +31,23 @@ export default function VerifyEmailPage() {
     <div className="max-w-md mx-auto py-20 px-6 text-center">
       {status === "working" && (
         <>
-          <div className="text-xl font-medium mb-2">Verifying your email…</div>
-          <div className="text-sm text-ink-500 dark:text-ink-400">One moment.</div>
+          <div className="text-xl font-medium mb-2">Verificando tu email...</div>
+          <div className="text-sm text-ink-500 dark:text-ink-400">Un momento.</div>
         </>
       )}
       {status === "ok" && (
         <>
           <div className="w-12 h-12 mx-auto mb-3 grid place-items-center rounded-full bg-yes-500/15 text-yes-500">✓</div>
-          <div className="text-xl font-semibold mb-2">Email verified</div>
-          <div className="text-sm text-ink-500 dark:text-ink-400">You can now place trades. Redirecting…</div>
+          <div className="text-xl font-semibold mb-2">Email verificado</div>
+          <div className="text-sm text-ink-500 dark:text-ink-400">Ya puedes operar. Redirigiendo...</div>
         </>
       )}
       {status === "err" && (
         <>
           <div className="w-12 h-12 mx-auto mb-3 grid place-items-center rounded-full bg-no-500/15 text-no-500">!</div>
-          <div className="text-xl font-semibold mb-2">Verification failed</div>
+          <div className="text-xl font-semibold mb-2">Falló la verificación</div>
           <div className="text-sm text-ink-500 dark:text-ink-400 mb-4">{msg}</div>
-          <Link href="/" className="text-accent-500 underline">Back to markets</Link>
+          <Link href="/" className="text-accent-500 underline">Volver a mercados</Link>
         </>
       )}
     </div>

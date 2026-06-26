@@ -6,9 +6,9 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 const COUNTRIES = [
-  ["PY", "Paraguay"], ["AR", "Argentina"], ["BR", "Brazil"], ["CL", "Chile"],
-  ["UY", "Uruguay"], ["BO", "Bolivia"], ["US", "United States"], ["ES", "Spain"],
-  ["MX", "Mexico"], ["OT", "Other"],
+  ["PY", "Paraguay"], ["AR", "Argentina"], ["BR", "Brasil"], ["CL", "Chile"],
+  ["UY", "Uruguay"], ["BO", "Bolivia"], ["US", "Estados Unidos"], ["ES", "España"],
+  ["MX", "México"], ["OT", "Otro"],
 ];
 
 export default function KycPage() {
@@ -20,10 +20,10 @@ export default function KycPage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
-  if (loading) return <div className="p-12 text-center text-sm text-ink-500">Loading…</div>;
+  if (loading) return <div className="p-12 text-center text-sm text-ink-500">Cargando...</div>;
   if (!user) {
     return <div className="max-w-md mx-auto py-20 text-center text-sm text-ink-500">
-      <Link href="/login" className="underline">Sign in</Link> to manage your compliance profile.
+      <Link href="/login" className="underline">Ingresa</Link> para gestionar tu perfil de cumplimiento.
     </div>;
   }
 
@@ -37,40 +37,40 @@ export default function KycPage() {
         date_of_birth: new Date(form.date_of_birth).toISOString(),
       });
       await refresh();
-      setMsg({ kind: "ok", text: "Compliance profile saved. Thank you." });
+      setMsg({ kind: "ok", text: "Perfil de cumplimiento guardado. Gracias." });
     } catch (e: any) {
-      setMsg({ kind: "err", text: e?.message ?? "Save failed" });
+      setMsg({ kind: "err", text: e?.message ?? "No se pudo guardar" });
     } finally { setBusy(false); }
   };
 
   return (
     <div className="max-w-xl mx-auto px-4 sm:px-6 py-10 lg:py-14 view-enter">
-      <p className="text-[11px] font-medium uppercase tracking-wider text-accent-500">Compliance profile</p>
-      <h1 className="text-3xl font-semibold tracking-tight mt-1">Verify your identity</h1>
+      <p className="text-[11px] font-medium uppercase tracking-wider text-accent-500">Perfil de cumplimiento</p>
+      <h1 className="text-3xl font-semibold tracking-tight mt-1">Verifica tu identidad</h1>
       <p className="text-ink-500 dark:text-ink-400 text-sm mt-3 leading-relaxed">
-        These fields are required if Pulso is ever required to file regulator reports (SEPRELAD-style AML, CNV record-keeping). Information is encrypted at rest and only released to admins under documented operational procedures and Paraguay's Law 6534/2020 lawful-basis framework.
+        Estos campos son obligatorios si Pulso debe presentar reportes regulatorios (AML tipo SEPRELAD, registros para CNV). La información se cifra en reposo y solo se entrega a admins bajo procedimientos operativos documentados y el marco de base legal de la Ley 6534/2020 de Paraguay.
       </p>
 
       <div className="mt-4 mb-6 grid grid-cols-2 gap-2 text-xs">
-        <Status label="Email verified" ok={user.email_verified}/>
-        <Status label="KYC submitted" ok={!!user.kyc_completed_at}/>
+        <Status label="Email verificado" ok={user.email_verified}/>
+        <Status label="KYC enviado" ok={!!user.kyc_completed_at}/>
       </div>
 
       <form onSubmit={submit} className="space-y-4">
-        <Field label="Full legal name">
+        <Field label="Nombre legal completo">
           <input required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className={inp}/>
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Country (ISO alpha-2)">
+          <Field label="País (ISO alpha-2)">
             <select value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} className={inp}>
               {COUNTRIES.map(([k, n]) => <option key={k} value={k}>{n}</option>)}
             </select>
           </Field>
-          <Field label="ID number (cédula / passport)">
+          <Field label="Número de documento (CI / pasaporte)">
             <input required value={form.id_number} onChange={(e) => setForm({ ...form, id_number: e.target.value })} className={inp}/>
           </Field>
         </div>
-        <Field label="Date of birth">
+        <Field label="Fecha de nacimiento">
           <input required type="date" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} className={inp}/>
         </Field>
         {msg && (
@@ -78,11 +78,11 @@ export default function KycPage() {
         )}
         <button type="submit" disabled={busy}
                 className="h-11 px-5 rounded-lg bg-ink-900 text-white dark:bg-white dark:text-ink-900 font-medium disabled:opacity-50">
-          {busy ? "Saving…" : "Save compliance profile"}
+          {busy ? "Guardando..." : "Guardar perfil de cumplimiento"}
         </button>
       </form>
       <p className="text-xs text-ink-500 dark:text-ink-400 mt-6">
-        Read the full <Link href="/compliance" className="text-accent-500 underline">Paraguayan compliance framework</Link>.
+        Lee el <Link href="/compliance" className="text-accent-500 underline">marco completo de cumplimiento paraguayo</Link>.
       </p>
     </div>
   );

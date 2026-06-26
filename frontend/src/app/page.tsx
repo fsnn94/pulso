@@ -7,7 +7,17 @@ import { useMarketSocket } from "@/lib/ws";
 import { compact } from "@/lib/format";
 import { MarketCard } from "@/components/MarketCard";
 
-const CATEGORIES = ["All", "Economics", "Tech & AI", "Crypto", "Science", "Sports", "Climate", "Space", "Culture"];
+const CATEGORIES: { value: string; label: string }[] = [
+  { value: "All",       label: "Todos" },
+  { value: "Economics", label: "Economía" },
+  { value: "Tech & AI", label: "Tecnología e IA" },
+  { value: "Crypto",    label: "Cripto" },
+  { value: "Science",   label: "Ciencia" },
+  { value: "Sports",    label: "Deportes" },
+  { value: "Climate",   label: "Clima" },
+  { value: "Space",     label: "Espacio" },
+  { value: "Culture",   label: "Cultura" },
+];
 
 export default function HomePage() {
   const [markets, setMarkets] = useState<Market[]>([]);
@@ -56,28 +66,28 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14 grid md:grid-cols-2 gap-8 items-end">
           <div>
             <span className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-accent-500 mb-3">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent-500 livedot"/>Live forecasts
+              <span className="w-1.5 h-1.5 rounded-full bg-accent-500 livedot"/>Pronósticos en vivo
             </span>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight leading-[1.1]">
-              The world's questions, priced.
+              Las preguntas del mundo, con precio.
             </h1>
             <p className="mt-4 text-ink-500 dark:text-ink-400 max-w-prose leading-relaxed">
-              Pulso aggregates probabilities for future events from a community of analysts.
-              Trade simulated YES/NO positions, watch consensus shift in real time, and learn what moves the market.
+              Pulso agrega probabilidades sobre eventos futuros a partir de una comunidad de analistas.
+              Opera posiciones simuladas YES/NO, observa cómo se mueve el consenso en tiempo real y descubre qué mueve al mercado.
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <a href="#markets" className="h-10 px-4 grid place-items-center rounded-lg bg-ink-900 text-white dark:bg-white dark:text-ink-900 font-medium text-sm hover:opacity-90">
-                Browse markets
+                Explorar mercados
               </a>
               <Link href="/portfolio" className="h-10 px-4 grid place-items-center rounded-lg border border-ink-200 dark:border-ink-700 font-medium text-sm hover:bg-ink-50 dark:hover:bg-ink-900">
-                View my portfolio
+                Ver mi portafolio
               </Link>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-4 text-sm">
-            <Stat label="Active markets" value={markets.length.toString()}/>
-            <Stat label="24h volume"     value={compact(totalVolume)}/>
-            <Stat label="Open interest"  value={compact(totalLiq)}/>
+            <Stat label="Mercados activos" value={markets.length.toString()}/>
+            <Stat label="Volumen 24h"      value={compact(totalVolume)}/>
+            <Stat label="Interés abierto"  value={compact(totalLiq)}/>
           </div>
         </div>
       </section>
@@ -86,22 +96,22 @@ export default function HomePage() {
         <div className="flex flex-wrap items-center gap-3 justify-between">
           <div className="flex items-center gap-1 overflow-x-auto -mx-1 px-1 pb-1">
             {CATEGORIES.map((c) => (
-              <button key={c} onClick={() => setCategory(c)}
-                      className={`px-3 h-8 whitespace-nowrap rounded-full text-sm font-medium border ${category === c
+              <button key={c.value} onClick={() => setCategory(c.value)}
+                      className={`px-3 h-8 whitespace-nowrap rounded-full text-sm font-medium border ${category === c.value
                         ? "bg-ink-900 text-white border-ink-900 dark:bg-white dark:text-ink-900 dark:border-white"
                         : "border-ink-200 dark:border-ink-800 text-ink-600 dark:text-ink-300 hover:bg-ink-50 dark:hover:bg-ink-900"}`}>
-                {c}
+                {c.label}
               </button>
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search markets…"
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar mercados..."
                    className="h-8 text-sm rounded-lg border border-ink-200 dark:border-ink-800 bg-transparent px-3 w-48"/>
             <select value={sort} onChange={(e) => setSort(e.target.value as any)}
                     className="h-8 text-sm rounded-lg border border-ink-200 dark:border-ink-800 bg-transparent px-2">
-              <option value="volume">24h volume</option>
-              <option value="closing">Closing soon</option>
-              <option value="newest">Newest</option>
+              <option value="volume">Volumen 24h</option>
+              <option value="closing">Por cerrar</option>
+              <option value="newest">Más recientes</option>
             </select>
           </div>
         </div>
@@ -115,7 +125,7 @@ export default function HomePage() {
             ))}
           </div>
         ) : markets.length === 0 ? (
-          <div className="py-20 text-center text-ink-500 dark:text-ink-400 text-sm">No markets match those filters.</div>
+          <div className="py-20 text-center text-ink-500 dark:text-ink-400 text-sm">Ningún mercado coincide con esos filtros.</div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {markets.map((m) => {

@@ -19,7 +19,7 @@ export function VerificationBanner() {
       const r = await api.resendVerification();
       if (r.verification_link) setLink(r.verification_link);
     } catch (e: any) {
-      alert(e?.message ?? "Failed to resend");
+      alert(e?.message ?? "No se pudo reenviar");
     } finally { setBusy(false); }
   };
 
@@ -28,16 +28,16 @@ export function VerificationBanner() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex items-center gap-3 text-[13px] flex-wrap">
         <span className="text-yellow-600 dark:text-yellow-500 flex-shrink-0"><Icon name="info" className="w-4 h-4"/></span>
         <span>
-          <span className="font-medium">Verify your email</span> to enable trading. We sent a link to <span className="mono">{user.email}</span>.
+          <span className="font-medium">Verifica tu email</span> para poder operar. Enviamos un link a <span className="mono">{user.email}</span>.
         </span>
         <button onClick={resend} disabled={busy}
                 className="ml-auto h-7 px-2.5 text-xs rounded-md border border-yellow-500/30 hover:bg-yellow-500/10 font-medium disabled:opacity-50">
-          {busy ? "Sending…" : "Resend"}
+          {busy ? "Enviando..." : "Reenviar"}
         </button>
         {link && (
           <Link href={link.replace(/^https?:\/\/[^/]+/, "")} onClick={() => void refresh()}
                 className="text-yellow-600 dark:text-yellow-500 underline underline-offset-2 ml-1 text-xs">
-            Open verification link (dev mode)
+            Abrir link de verificación (modo dev)
           </Link>
         )}
       </div>

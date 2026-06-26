@@ -46,9 +46,9 @@ export function MarketCard({
       </div>
 
       <div className="grid grid-cols-3 text-xs gap-2 pt-3 border-t border-ink-100 dark:border-ink-800 mt-auto">
-        <Cell label="24h vol"   value={compact(market.volume_24h)}/>
-        <Cell label="Liquidity" value={compact(market.liquidity)}/>
-        <Cell label="Closes"    value={new Date(market.closes_at).toLocaleDateString([], { month: "short", day: "numeric" })}/>
+        <Cell label="Vol 24h"   value={compact(market.volume_24h)}/>
+        <Cell label="Liquidez"  value={compact(market.liquidity)}/>
+        <Cell label="Cierra"    value={new Date(market.closes_at).toLocaleDateString([], { month: "short", day: "numeric" })}/>
       </div>
     </Link>
   );

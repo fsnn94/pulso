@@ -20,13 +20,13 @@ export default function AdminProposalsPage() {
   useEffect(() => { if (user?.is_admin) reload(); }, [user?.id, tab]); // eslint-disable-line
   useMarketSocket((e: any) => { if (e.type === "proposal" || e.type === "proposal_reviewed") reload(); });
 
-  if (loading) return <div className="p-12 text-center text-sm text-ink-500">Loading…</div>;
-  if (!user?.is_admin) return <div className="p-12 text-center text-sm text-ink-500">Admins only.</div>;
+  if (loading) return <div className="p-12 text-center text-sm text-ink-500">Cargando...</div>;
+  if (!user?.is_admin) return <div className="p-12 text-center text-sm text-ink-500">Solo para admins.</div>;
 
   const decide = async (id: string, decision: "APPROVED" | "REJECTED", reviewNote?: string) => {
     setBusy(id);
     try { await api.reviewProposal(id, { decision, review_note: reviewNote }); reload(); setPickFor(null); setNote(""); }
-    catch (e: any) { alert(e?.message ?? "Failed"); }
+    catch (e: any) { alert(e?.message ?? "Falló"); }
     finally { setBusy(null); }
   };
 
@@ -34,10 +34,10 @@ export default function AdminProposalsPage() {
     <div className="view-enter max-w-7xl mx-auto px-4 sm:px-6 py-8 lg:py-12">
       <div className="flex items-end justify-between flex-wrap gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Market proposals</h1>
-          <p className="text-ink-500 dark:text-ink-400 text-sm mt-1">Review user-submitted markets before they go live.</p>
+          <h1 className="text-3xl font-semibold tracking-tight">Propuestas de mercado</h1>
+          <p className="text-ink-500 dark:text-ink-400 text-sm mt-1">Revisa los mercados propuestos por los usuarios antes de publicarlos.</p>
         </div>
-        <Link href="/admin" className="h-9 px-3 grid place-items-center rounded-lg border border-ink-200 dark:border-ink-800 text-sm">← Admin home</Link>
+        <Link href="/admin" className="h-9 px-3 grid place-items-center rounded-lg border border-ink-200 dark:border-ink-800 text-sm">← Inicio admin</Link>
       </div>
 
       <div className="flex bg-ink-50 dark:bg-ink-900 p-0.5 rounded-lg text-xs w-fit mb-4">
@@ -53,7 +53,7 @@ export default function AdminProposalsPage() {
 
       {items.length === 0 ? (
         <div className="rounded-xl border border-ink-100 dark:border-ink-800 px-6 py-14 text-center text-sm text-ink-500 dark:text-ink-400">
-          No {tab.toLowerCase()} proposals.
+          No hay propuestas en {tab.toLowerCase()}.
         </div>
       ) : (
         <div className="space-y-4">
@@ -70,32 +70,32 @@ export default function AdminProposalsPage() {
               <p className="text-sm text-ink-600 dark:text-ink-300 mt-2 leading-relaxed">{p.description}</p>
               {p.rationale && (
                 <p className="text-xs text-ink-500 dark:text-ink-400 mt-2 italic border-l-2 border-ink-200 dark:border-ink-700 pl-3">
-                  Rationale: {p.rationale}
+                  Motivación: {p.rationale}
                 </p>
               )}
               <div className="mt-3 grid sm:grid-cols-4 gap-3 text-xs text-ink-500 dark:text-ink-400">
-                <KV k="Closes"  v={new Date(p.closes_at).toLocaleString()}/>
-                <KV k="Initial" v={`${(p.initial_yes_price * 100).toFixed(0)}¢ YES`}/>
-                <KV k="Source"  v={p.resolution_source}/>
-                <KV k="Submitter" v={p.submitter_id.slice(0, 8)}/>
+                <KV k="Cierra"  v={new Date(p.closes_at).toLocaleString()}/>
+                <KV k="Inicial" v={`${(p.initial_yes_price * 100).toFixed(0)}¢ YES`}/>
+                <KV k="Fuente"  v={p.resolution_source}/>
+                <KV k="Autor"   v={p.submitter_id.slice(0, 8)}/>
               </div>
               {p.status === "PENDING" ? (
                 <div className="mt-4 flex flex-wrap gap-2 pt-3 border-t border-ink-100 dark:border-ink-800">
                   <button disabled={busy === p.id} onClick={() => decide(p.id, "APPROVED")}
                           className="h-9 px-4 rounded-lg bg-yes-500 hover:bg-yes-600 text-white text-sm font-medium disabled:opacity-50">
-                    Approve & launch
+                    Aprobar y publicar
                   </button>
                   <button disabled={busy === p.id} onClick={() => setPickFor(p)}
                           className="h-9 px-4 rounded-lg bg-no-500/10 hover:bg-no-500/20 text-no-500 text-sm font-medium disabled:opacity-50">
-                    Reject…
+                    Rechazar...
                   </button>
                 </div>
               ) : (
                 <div className="mt-3 pt-3 border-t border-ink-100 dark:border-ink-800 text-xs text-ink-500 dark:text-ink-400">
                   {p.status === "APPROVED" && p.approved_market_id && (
-                    <Link href={`/markets/${p.approved_market_id}`} className="text-accent-500 hover:underline">View live market →</Link>
+                    <Link href={`/markets/${p.approved_market_id}`} className="text-accent-500 hover:underline">Ver mercado en vivo →</Link>
                   )}
-                  {p.review_note && <div className="mt-1">Admin note: <span className="italic">{p.review_note}</span></div>}
+                  {p.review_note && <div className="mt-1">Nota del admin: <span className="italic">{p.review_note}</span></div>}
                 </div>
               )}
             </div>
@@ -106,13 +106,13 @@ export default function AdminProposalsPage() {
       {pickFor && (
         <div className="fixed inset-0 z-50 bg-black/50 grid place-items-center p-4" onClick={() => setPickFor(null)}>
           <div className="bg-white dark:bg-ink-900 rounded-xl p-5 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-semibold mb-2">Reject "{pickFor.title}"?</h3>
-            <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Optional note to submitter…"
+            <h3 className="font-semibold mb-2">¿Rechazar "{pickFor.title}"?</h3>
+            <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Nota opcional para quien la envió..."
                       className="w-full px-3 py-2 rounded-lg border border-ink-200 dark:border-ink-800 bg-transparent text-sm"/>
             <div className="flex justify-end gap-2 mt-3">
-              <button onClick={() => setPickFor(null)} className="h-9 px-3 rounded-lg border border-ink-200 dark:border-ink-700 text-sm">Cancel</button>
+              <button onClick={() => setPickFor(null)} className="h-9 px-3 rounded-lg border border-ink-200 dark:border-ink-700 text-sm">Cancelar</button>
               <button onClick={() => decide(pickFor.id, "REJECTED", note || undefined)}
-                      className="h-9 px-3 rounded-lg bg-no-500 text-white text-sm font-medium">Reject proposal</button>
+                      className="h-9 px-3 rounded-lg bg-no-500 text-white text-sm font-medium">Rechazar propuesta</button>
             </div>
           </div>
         </div>

@@ -5,7 +5,16 @@ import Link from "next/link";
 import { api, Market } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
-const CATEGORIES = ["Economics", "Tech & AI", "Crypto", "Science", "Sports", "Climate", "Space", "Culture"];
+const CATEGORIES: { value: string; label: string }[] = [
+  { value: "Economics", label: "Economía" },
+  { value: "Tech & AI", label: "Tecnología e IA" },
+  { value: "Crypto",    label: "Cripto" },
+  { value: "Science",   label: "Ciencia" },
+  { value: "Sports",    label: "Deportes" },
+  { value: "Climate",   label: "Clima" },
+  { value: "Space",     label: "Espacio" },
+  { value: "Culture",   label: "Cultura" },
+];
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -18,17 +27,17 @@ export default function AdminPage() {
   };
   useEffect(() => { if (user?.is_admin) void refresh(); }, [user?.id]); // eslint-disable-line
 
-  if (loading) return <div className="p-12 text-center text-sm text-ink-500">Loading…</div>;
-  if (!user)   return <div className="p-12 text-center text-sm text-ink-500"><Link href="/login" className="underline">Sign in</Link> to access admin.</div>;
-  if (!user.is_admin) return <div className="p-12 text-center text-sm text-ink-500">Admins only.</div>;
+  if (loading) return <div className="p-12 text-center text-sm text-ink-500">Cargando...</div>;
+  if (!user)   return <div className="p-12 text-center text-sm text-ink-500"><Link href="/login" className="underline">Ingresa</Link> para acceder al admin.</div>;
+  if (!user.is_admin) return <div className="p-12 text-center text-sm text-ink-500">Solo para admins.</div>;
 
   const resolve = async (id: string, outcome: "YES" | "NO") => {
-    if (!confirm(`Resolve market ${id} as ${outcome}? This pays out winners.`)) return;
+    if (!confirm(`¿Resolver el mercado ${id} como ${outcome}? Esto pagará a los ganadores.`)) return;
     try {
       await api.resolveMarket(id, outcome);
-      setMsg({ kind: "ok", text: `Resolved ${id} as ${outcome}.` });
+      setMsg({ kind: "ok", text: `Resuelto ${id} como ${outcome}.` });
       await refresh();
-    } catch (e: any) { setMsg({ kind: "err", text: e?.message ?? "Resolve failed" }); }
+    } catch (e: any) { setMsg({ kind: "err", text: e?.message ?? "Falló la resolución" }); }
   };
 
   return (
@@ -36,39 +45,39 @@ export default function AdminPage() {
       <div className="flex items-end justify-between flex-wrap gap-4 mb-6">
         <div>
           <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">Admin</h1>
-          <p className="text-ink-500 dark:text-ink-400 text-sm mt-1">Create markets, review proposals, monitor cashflow, export audit data.</p>
+          <p className="text-ink-500 dark:text-ink-400 text-sm mt-1">Crear mercados, revisar propuestas, monitorear flujo de caja, exportar datos de auditoría.</p>
         </div>
         <button onClick={() => setOpen(true)}
                 className="h-10 px-4 rounded-lg bg-ink-900 text-white dark:bg-white dark:text-ink-900 font-medium text-sm">
-          Create market directly
+          Crear mercado directamente
         </button>
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
         <Link href="/admin/proposals" className="rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-4 hover:border-accent-500 transition">
-          <div className="text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400">Review queue</div>
-          <div className="font-semibold mt-1">User-submitted proposals</div>
-          <div className="text-xs text-ink-500 dark:text-ink-400 mt-1">Approve, edit, or reject incoming markets.</div>
+          <div className="text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400">Cola de revisión</div>
+          <div className="font-semibold mt-1">Propuestas de usuarios</div>
+          <div className="text-xs text-ink-500 dark:text-ink-400 mt-1">Aprobar, editar o rechazar mercados entrantes.</div>
         </Link>
         <Link href="/admin/cashflow" className="rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-4 hover:border-accent-500 transition">
-          <div className="text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400">Real-time overview</div>
-          <div className="font-semibold mt-1">Cashflow & live tape</div>
-          <div className="text-xs text-ink-500 dark:text-ink-400 mt-1">Trade volume, P&L, audit export.</div>
+          <div className="text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400">Vista en tiempo real</div>
+          <div className="font-semibold mt-1">Flujo de caja y cinta en vivo</div>
+          <div className="text-xs text-ink-500 dark:text-ink-400 mt-1">Volumen de operaciones, P&L, export de auditoría.</div>
         </Link>
         <Link href="/admin/aml" className="rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-4 hover:border-accent-500 transition">
-          <div className="text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400">Risk</div>
-          <div className="font-semibold mt-1">AML rules engine</div>
-          <div className="text-xs text-ink-500 dark:text-ink-400 mt-1">Wash trades, velocity, concentration, structuring.</div>
+          <div className="text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400">Riesgo</div>
+          <div className="font-semibold mt-1">Motor de reglas AML</div>
+          <div className="text-xs text-ink-500 dark:text-ink-400 mt-1">Operaciones ficticias, velocidad, concentración, fraccionamiento.</div>
         </Link>
         <Link href="/admin/resolutions" className="rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-4 hover:border-accent-500 transition">
-          <div className="text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400">Lifecycle</div>
-          <div className="font-semibold mt-1">Resolution queue</div>
-          <div className="text-xs text-ink-500 dark:text-ink-400 mt-1">Confirm or override resolver proposals (24h soft window).</div>
+          <div className="text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400">Ciclo de vida</div>
+          <div className="font-semibold mt-1">Cola de resoluciones</div>
+          <div className="text-xs text-ink-500 dark:text-ink-400 mt-1">Confirmar o anular propuestas del resolutor (ventana de 24h).</div>
         </Link>
         <Link href="/compliance" className="rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-4 hover:border-accent-500 transition">
-          <div className="text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400">Regulatory</div>
-          <div className="font-semibold mt-1">Compliance framework (Paraguay)</div>
-          <div className="text-xs text-ink-500 dark:text-ink-400 mt-1">CONAJZAR / CNV / SEPRELAD posture.</div>
+          <div className="text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400">Regulatorio</div>
+          <div className="font-semibold mt-1">Marco de cumplimiento (Paraguay)</div>
+          <div className="text-xs text-ink-500 dark:text-ink-400 mt-1">Postura ante CONAJZAR / CNV / SEPRELAD.</div>
         </Link>
       </div>
 
@@ -83,11 +92,11 @@ export default function AdminPage() {
           <table className="w-full text-sm">
             <thead className="text-[11px] uppercase tracking-wider text-ink-500 dark:text-ink-400">
               <tr className="border-b border-ink-100 dark:border-ink-800">
-                <th className="text-left px-5 sm:px-6 py-2 font-medium">Title</th>
-                <th className="text-left px-3 py-2 font-medium">Category</th>
-                <th className="text-right px-3 py-2 font-medium">YES px</th>
-                <th className="text-left px-3 py-2 font-medium">Status</th>
-                <th className="text-left px-3 py-2 font-medium">Closes</th>
+                <th className="text-left px-5 sm:px-6 py-2 font-medium">Título</th>
+                <th className="text-left px-3 py-2 font-medium">Categoría</th>
+                <th className="text-right px-3 py-2 font-medium">Precio YES</th>
+                <th className="text-left px-3 py-2 font-medium">Estado</th>
+                <th className="text-left px-3 py-2 font-medium">Cierra</th>
                 <th className="px-5 sm:px-6 py-2"></th>
               </tr>
             </thead>
@@ -105,8 +114,8 @@ export default function AdminPage() {
                   <td className="px-5 sm:px-6 py-3 text-right whitespace-nowrap">
                     {m.status !== "RESOLVED" && (
                       <>
-                        <button onClick={() => resolve(m.id, "YES")} className="h-8 px-2.5 text-xs rounded-md bg-yes-500/15 text-yes-500 hover:bg-yes-500/25 font-medium mr-2">Resolve YES</button>
-                        <button onClick={() => resolve(m.id, "NO")}  className="h-8 px-2.5 text-xs rounded-md bg-no-500/15 text-no-500 hover:bg-no-500/25 font-medium">Resolve NO</button>
+                        <button onClick={() => resolve(m.id, "YES")} className="h-8 px-2.5 text-xs rounded-md bg-yes-500/15 text-yes-500 hover:bg-yes-500/25 font-medium mr-2">Resolver YES</button>
+                        <button onClick={() => resolve(m.id, "NO")}  className="h-8 px-2.5 text-xs rounded-md bg-no-500/15 text-no-500 hover:bg-no-500/25 font-medium">Resolver NO</button>
                       </>
                     )}
                   </td>
@@ -126,7 +135,7 @@ function CreateMarketModal({ onClose, onCreated }: { onClose: () => void; onCrea
   const [form, setForm] = useState({
     id: "", title: "", short_title: "", description: "",
     category: "Economics", closes_at: new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 16),
-    initial_yes_price: 0.5, resolution_source: "Official primary source",
+    initial_yes_price: 0.5, resolution_source: "Fuente oficial primaria",
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -136,7 +145,7 @@ function CreateMarketModal({ onClose, onCreated }: { onClose: () => void; onCrea
     try {
       await api.createMarket({ ...form, closes_at: new Date(form.closes_at).toISOString() });
       onCreated();
-    } catch (e: any) { setErr(e?.message ?? "Create failed"); }
+    } catch (e: any) { setErr(e?.message ?? "Falló la creación"); }
     finally { setBusy(false); }
   };
 
@@ -144,34 +153,34 @@ function CreateMarketModal({ onClose, onCreated }: { onClose: () => void; onCrea
     <div className="fixed inset-0 z-50 bg-black/50 grid place-items-center p-4" onClick={onClose}>
       <div className="bg-white dark:bg-ink-900 rounded-xl shadow-xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Create market</h2>
+          <h2 className="text-lg font-semibold">Crear mercado</h2>
           <button onClick={onClose} className="text-ink-500 hover:text-ink-900 dark:hover:text-ink-100 text-xl leading-none">×</button>
         </div>
         <form onSubmit={submit} className="space-y-3">
-          <F label="Slug ID (a-z, 0-9, dashes)"><input required pattern="[a-z0-9-]{3,64}" value={form.id} onChange={(e) => setForm({ ...form, id: e.target.value })} className={inp}/></F>
-          <F label="Title"><input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={inp}/></F>
-          <F label="Short title"><input required maxLength={160} value={form.short_title} onChange={(e) => setForm({ ...form, short_title: e.target.value })} className={inp}/></F>
-          <F label="Description / resolution rules"><textarea required rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={`${inp} resize-y`}/></F>
+          <F label="Slug ID (a-z, 0-9, guiones)"><input required pattern="[a-z0-9-]{3,64}" value={form.id} onChange={(e) => setForm({ ...form, id: e.target.value })} className={inp}/></F>
+          <F label="Título"><input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={inp}/></F>
+          <F label="Título corto"><input required maxLength={160} value={form.short_title} onChange={(e) => setForm({ ...form, short_title: e.target.value })} className={inp}/></F>
+          <F label="Descripción / reglas de resolución"><textarea required rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={`${inp} resize-y`}/></F>
           <div className="grid grid-cols-2 gap-3">
-            <F label="Category">
+            <F label="Categoría">
               <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={inp}>
-                {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
             </F>
-            <F label="Initial YES price">
+            <F label="Precio YES inicial">
               <input type="number" min="0.02" max="0.98" step="0.01" value={form.initial_yes_price}
                      onChange={(e) => setForm({ ...form, initial_yes_price: parseFloat(e.target.value) })} className={inp}/>
             </F>
           </div>
-          <F label="Closes at">
+          <F label="Cierra el">
             <input type="datetime-local" required value={form.closes_at}
                    onChange={(e) => setForm({ ...form, closes_at: e.target.value })} className={inp}/>
           </F>
           {err && <div className="text-no-500 text-sm">{err}</div>}
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={onClose} className="h-10 px-4 rounded-lg border border-ink-200 dark:border-ink-700 text-sm">Cancel</button>
+            <button type="button" onClick={onClose} className="h-10 px-4 rounded-lg border border-ink-200 dark:border-ink-700 text-sm">Cancelar</button>
             <button disabled={busy} type="submit" className="h-10 px-4 rounded-lg bg-ink-900 text-white dark:bg-white dark:text-ink-900 text-sm font-medium disabled:opacity-50">
-              {busy ? "Creating…" : "Create market"}
+              {busy ? "Creando..." : "Crear mercado"}
             </button>
           </div>
         </form>

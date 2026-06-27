@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     expose_verification_link_in_dev: bool = True
     require_email_verification_to_trade: bool = True
 
+    # ----- Email (SendGrid) -----
+    sendgrid_api_key: str = ""             # leave empty to keep stub behaviour
+    email_from: str = "noreply@pulso.local"
+    email_from_name: str = "Pulso"
+
     # ----- Resolution -----
     resolution_loop_interval_seconds: int = 60
     resolution_auto_finalize_hours_default: int = 24

@@ -8,14 +8,17 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import desc, func, select
+from sqlalchemy import delete, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
+from ..config import get_settings
 from ..deps import require_admin
 from ..matching import resolve_market
 from ..models import (
-    Market, MarketProposal, MarketStatus, ProposalStatus, Trade, User,
+    Activity, AmlAlert, AmlMute, EmailVerification,
+    Market, MarketProposal, MarketStatus, Order, Position,
+    ProposalStatus, Trade, User,
 )
 from ..schemas import (
     AdminUserRow, CashflowKpiOut, MarketBase, MarketCreateIn, MarketResolveIn,
@@ -264,3 +267,101 @@ async def audit_export(
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{fn}"'},
     )
+
+
+@router.post("/users/{user_id}/disable")
+async def disable_user(
+    user_id: uuid.UUID,
+    user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Disable a user account. The user can no longer log in. Reversible via /enable."""
+    target = await db.get(User, user_id)
+    if not target:
+        raise HTTPException(404, "Usuario no encontrado")
+    if target.is_admin:
+        raise HTTPException(403, "No se puede deshabilitar a un administrador")
+    target.disabled = True
+    await db.commit()
+    return {"ok": True, "disabled": True}
+
+
+@router.post("/users/{user_id}/enable")
+async def enable_user(
+    user_id: uuid.UUID,
+    user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Re-enable a previously disabled user account."""
+    target = await db.get(User, user_id)
+    if not target:
+        raise HTTPException(404, "Usuario no encontrado")
+    target.disabled = False
+    await db.commit()
+    return {"ok": True, "disabled": False}
+
+
+@router.post("/users/{user_id}/verify-email")
+async def force_verify_email(
+    user_id: uuid.UUID,
+    user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Force-mark a user's email as verified (e.g. for testing without real email)."""
+    target = await db.get(User, user_id)
+    if not target:
+        raise HTTPException(404, "Usuario no encontrado")
+    target.email_verified = True
+    target.email_verified_at = datetime.now(timezone.utc)
+    await db.commit()
+    return {"ok": True, "email_verified": True}
+
+
+@router.post("/users/{user_id}/reset-cash")
+async def reset_user_cash(
+    user_id: uuid.UUID,
+    user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Reset a user's cash to the starting credits amount."""
+    target = await db.get(User, user_id)
+    if not target:
+        raise HTTPException(404, "Usuario no encontrado")
+    s = get_settings()
+    target.cash = s.starting_credits
+    await db.commit()
+    return {"ok": True, "cash": target.cash}
+
+
+@router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: uuid.UUID,
+    user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Hard-delete a user. Refuses if the user has trade history (data integrity)."""
+    target = await db.get(User, user_id)
+    if not target:
+        raise HTTPException(404, "Usuario no encontrado")
+    if target.is_admin:
+        raise HTTPException(403, "No se puede eliminar a un administrador")
+
+    # Check if user has trade history
+    trade_count = (await db.execute(
+        select(func.count()).select_from(Trade)
+        .where((Trade.buyer_id == user_id) | (Trade.seller_id == user_id))
+    )).scalar_one()
+    if trade_count > 0:
+        raise HTTPException(409, "El usuario tiene historial de operaciones — usá Deshabilitar en su lugar")
+
+    # Delete dependent records first
+    await db.execute(delete(Activity).where(Activity.user_id == user_id))
+    await db.execute(delete(Position).where(Position.user_id == user_id))
+    await db.execute(delete(Order).where(Order.user_id == user_id))
+    await db.execute(delete(EmailVerification).where(EmailVerification.user_id == user_id))
+    await db.execute(delete(AmlAlert).where(AmlAlert.user_id == user_id))
+    await db.execute(delete(AmlMute).where(AmlMute.user_id == user_id))
+    await db.execute(delete(MarketProposal).where(MarketProposal.submitter_id == user_id))
+    await db.delete(target)
+    await db.commit()
+    return {"ok": True, "deleted": True}

@@ -14,7 +14,7 @@ from .models import (
 
 # ---------- Auth ----------
 class RegisterIn(BaseModel):
-    email: str
+    email: EmailStr
     handle: str = Field(min_length=2, max_length=40)
     password: str = Field(min_length=6, max_length=128)
     accepted_disclaimer: bool
@@ -218,6 +218,8 @@ class AdminUserRow(BaseModel):
     email_verified: bool
     country: str | None
     aml_flag: bool
+    disabled: bool
+    is_admin: bool
     created_at: datetime
 
 

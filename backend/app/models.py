@@ -81,6 +81,7 @@ class User(Base):
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     cash: Mapped[float] = mapped_column(Float, default=10_000.0, nullable=False)
     accepted_research_disclaimer: Mapped[bool] = mapped_column(Boolean, default=False)
+    disabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)  # admin can disable accounts
 
     # Email verification (required to trade)
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

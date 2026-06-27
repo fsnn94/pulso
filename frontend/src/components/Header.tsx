@@ -33,6 +33,7 @@ export function Header() {
             <NavLink href="/portfolio">Portafolio</NavLink>
             {user && <NavLink href="/markets/new">Proponer</NavLink>}
             {user?.is_admin && <NavLink href="/admin">Admin</NavLink>}
+            {user?.is_admin && <NavLink href="/admin/users">Usuarios</NavLink>}
             <NavLink href="/compliance">Cumplimiento</NavLink>
           </nav>
 

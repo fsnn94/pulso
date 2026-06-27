@@ -26,9 +26,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
   if (!res.ok) {
     let detail: any;
-    try { detail = await res.json(); } catch { detail = { detail: "Error de red" }; }
-    const raw = detail?.detail;
-    const msg = typeof raw === 'string' ? raw : Array.isArray(raw) ? raw.map((e: any) => e.msg || JSON.stringify(e)).join('; ') : raw ? JSON.stringify(raw) : `Error ${res.status}`;
+    try { detail = await res.json(); } catch { detail = { detail: res.statusText }; }
+    const msg = detail?.detail || `HTTP ${res.status}`;
     throw new ApiError(msg, res.status, detail);
   }
   if (res.status === 204) return undefined as unknown as T;
@@ -100,6 +99,16 @@ export const api = {
     if (note) p.set("note", note);
     return request<{ ok: boolean }>(`/admin/users/${userId}/aml?${p}`, { method: "POST" });
   },
+  disableUser: (userId: string) =>
+    request<{ ok: boolean; disabled: boolean }>(`/admin/users/${userId}/disable`, { method: "POST" }),
+  enableUser: (userId: string) =>
+    request<{ ok: boolean; disabled: boolean }>(`/admin/users/${userId}/enable`, { method: "POST" }),
+  forceVerifyEmail: (userId: string) =>
+    request<{ ok: boolean; email_verified: boolean }>(`/admin/users/${userId}/verify-email`, { method: "POST" }),
+  resetUserCash: (userId: string) =>
+    request<{ ok: boolean; cash: number }>(`/admin/users/${userId}/reset-cash`, { method: "POST" }),
+  deleteUser: (userId: string) =>
+    request<{ ok: boolean; deleted: boolean }>(`/admin/users/${userId}`, { method: "DELETE" }),
   auditExportUrl: (from?: string, to?: string) => {
     const p = new URLSearchParams();
     if (from) p.set("from", from);
@@ -235,7 +244,7 @@ export type CashflowKpi = {
 export type AdminUserRow = {
   id: string; handle: string; email: string; cash: number;
   email_verified: boolean; country: string | null;
-  aml_flag: boolean; created_at: string;
+  aml_flag: boolean; disabled: boolean; is_admin: boolean; created_at: string;
 };
 
 export type AmlSeverity = "INFO" | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";

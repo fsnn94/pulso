@@ -60,6 +60,8 @@ async def login(payload: LoginIn, db: Annotated[AsyncSession, Depends(get_db)]):
     user = res.scalar_one_or_none()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(401, "Email o contraseña inválidos")
+    if user.disabled:
+        raise HTTPException(403, "Tu cuenta fue deshabilitada por el administrador")
     return TokenOut(access_token=create_access_token(user.id, is_admin=user.is_admin))
 
 

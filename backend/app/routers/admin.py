@@ -8,7 +8,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import delete, desc, func, select
+from sqlalchemy import delete, desc, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
@@ -17,8 +17,8 @@ from ..deps import require_admin
 from ..matching import resolve_market
 from ..models import (
     Activity, AmlAlert, AmlMute, EmailVerification,
-    Market, MarketProposal, MarketStatus, Order, Position,
-    ProposalStatus, Trade, User,
+    Market, MarketDispute, MarketProposal, MarketStatus, Order, Position,
+    ProposalStatus, ResolutionProposal, Trade, User,
 )
 from ..schemas import (
     AdminUserRow, CashflowKpiOut, MarketBase, MarketCreateIn, MarketResolveIn,
@@ -343,7 +343,17 @@ async def delete_user(
     user: Annotated[User, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Hard-delete a user. Refuses if the user has trade history (data integrity)."""
+    """Hard-delete a user. Refuses if the user has trade history (data integrity).
+
+    Cleans up all FK references in the right order:
+      - Subject references (Activity, Position, Order, AmlAlert, MarketProposal, etc.):
+        delete the dependent record.
+      - Actor references (Market.created_by, AmlAlert.reviewed_by, MarketProposal.reviewed_by,
+        ResolutionProposal.confirmed_by, AmlMute.revoked_by, Trade.seller_id):
+        SET NULL (preserve historical record).
+      - NOT NULL actor references (AmlMute.muted_by, MarketDispute.user_id):
+        delete the dependent record.
+    """
     target = await db.get(User, user_id)
     if not target:
         raise HTTPException(404, "Usuario no encontrado")
@@ -354,7 +364,7 @@ async def delete_user(
         if admin_count <= 1:
             raise HTTPException(409, "No se puede eliminar al unico administrador")
 
-    # Check if user has trade history
+    # Refuse delete if user has trade history (data integrity — buyer_id is NOT NULL on Trade)
     trade_count = (await db.execute(
         select(func.count()).select_from(Trade)
         .where((Trade.buyer_id == user_id) | (Trade.seller_id == user_id))
@@ -362,16 +372,32 @@ async def delete_user(
     if trade_count > 0:
         raise HTTPException(409, "El usuario tiene historial de operaciones — usá Deshabilitar en su lugar")
 
-    # Delete dependent records first
-    await db.execute(delete(Activity).where(Activity.user_id == user_id))
-    await db.execute(delete(Position).where(Position.user_id == user_id))
-    await db.execute(delete(Order).where(Order.user_id == user_id))
-    await db.execute(delete(EmailVerification).where(EmailVerification.user_id == user_id))
-    await db.execute(delete(AmlAlert).where(AmlAlert.user_id == user_id))
-    await db.execute(delete(AmlMute).where(AmlMute.user_id == user_id))
-    await db.execute(delete(MarketProposal).where(MarketProposal.submitter_id == user_id))
-    await db.delete(target)
-    await db.commit()
+    try:
+        # 1. Null out nullable actor references (preserve historical records)
+        await db.execute(update(Market).where(Market.created_by == user_id).values(created_by=None))
+        await db.execute(update(Trade).where(Trade.seller_id == user_id).values(seller_id=None))
+        await db.execute(update(AmlAlert).where(AmlAlert.reviewed_by == user_id).values(reviewed_by=None))
+        await db.execute(update(MarketProposal).where(MarketProposal.reviewed_by == user_id).values(reviewed_by=None))
+        await db.execute(update(ResolutionProposal).where(ResolutionProposal.confirmed_by == user_id).values(confirmed_by=None))
+        await db.execute(update(AmlMute).where(AmlMute.revoked_by == user_id).values(revoked_by=None))
+
+        # 2. Delete subject + NOT NULL actor records
+        await db.execute(delete(MarketDispute).where(MarketDispute.user_id == user_id))
+        await db.execute(delete(AmlMute).where((AmlMute.user_id == user_id) | (AmlMute.muted_by == user_id)))
+        await db.execute(delete(AmlAlert).where(AmlAlert.user_id == user_id))
+        await db.execute(delete(MarketProposal).where(MarketProposal.submitter_id == user_id))
+        await db.execute(delete(Activity).where(Activity.user_id == user_id))
+        await db.execute(delete(Position).where(Position.user_id == user_id))
+        await db.execute(delete(Order).where(Order.user_id == user_id))
+        await db.execute(delete(EmailVerification).where(EmailVerification.user_id == user_id))
+
+        # 3. Delete the user itself
+        await db.delete(target)
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(500, f"Error al eliminar usuario: {type(e).__name__}: {e}")
+
     return {"ok": True, "deleted": True}
 
 

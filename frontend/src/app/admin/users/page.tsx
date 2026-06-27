@@ -73,10 +73,25 @@ export default function AdminUsersPage() {
   };
 
   const onDelete = async (u: AdminUserRow) => {
-    if (u.is_admin) return;
     if (!confirm(`¿Eliminar permanentemente a ${u.email}? Esta acción no se puede deshacer.`)) return;
     setBusy(u.id);
     try { await api.deleteUser(u.id); refresh(); }
+    catch (e: any) { alert(e?.message ?? "Falló"); }
+    finally { setBusy(null); }
+  };
+
+  const onPromoteAdmin = async (u: AdminUserRow) => {
+    if (!confirm(`¿Promover a ${u.email} a administrador? Va a poder hacer todo lo que hacés vos.`)) return;
+    setBusy(u.id);
+    try { await api.promoteAdmin(u.id); refresh(); }
+    catch (e: any) { alert(e?.message ?? "Falló"); }
+    finally { setBusy(null); }
+  };
+
+  const onRevokeAdmin = async (u: AdminUserRow) => {
+    if (!confirm(`¿Revocar el rol de administrador a ${u.email}?`)) return;
+    setBusy(u.id);
+    try { await api.revokeAdmin(u.id); refresh(); }
     catch (e: any) { alert(e?.message ?? "Falló"); }
     finally { setBusy(null); }
   };
@@ -154,6 +169,16 @@ export default function AdminUsersPage() {
                     <ActionButton onClick={() => onResetCash(u)} busy={busy === u.id} tone="default">
                       Reset saldo
                     </ActionButton>
+                    {!u.is_admin && (
+                      <ActionButton onClick={() => onPromoteAdmin(u)} busy={busy === u.id} tone="yes">
+                        Promover a admin
+                      </ActionButton>
+                    )}
+                    {u.is_admin && (
+                      <ActionButton onClick={() => onRevokeAdmin(u)} busy={busy === u.id} tone="warn">
+                        Revocar admin
+                      </ActionButton>
+                    )}
                     {!u.disabled && !u.is_admin && (
                       <ActionButton onClick={() => onDisable(u)} busy={busy === u.id} tone="warn">
                         Deshabilitar
@@ -164,11 +189,9 @@ export default function AdminUsersPage() {
                         Habilitar
                       </ActionButton>
                     )}
-                    {!u.is_admin && (
-                      <ActionButton onClick={() => onDelete(u)} busy={busy === u.id} tone="no">
-                        Eliminar
-                      </ActionButton>
-                    )}
+                    <ActionButton onClick={() => onDelete(u)} busy={busy === u.id} tone="no">
+                      Eliminar
+                    </ActionButton>
                   </div>
                 </td>
               </tr>

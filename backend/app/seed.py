@@ -13,10 +13,12 @@ from .security import hash_password
 async def seed_if_empty(db: AsyncSession) -> None:
     settings = get_settings()
 
-    # Admin user
+    # Admin user: only seed if explicitly opted-in via CREATE_DEFAULT_ADMIN env var.
+    # On existing deployments where you have your own admin, this stays off so the
+    # default credentials cant be re-created accidentally.
     res = await db.execute(select(User).where(User.email == settings.admin_email))
     admin = res.scalar_one_or_none()
-    if not admin:
+    if not admin and settings.create_default_admin:
         admin = User(
             email=settings.admin_email,
             handle="admin",
@@ -27,6 +29,16 @@ async def seed_if_empty(db: AsyncSession) -> None:
         )
         db.add(admin)
         await db.flush()
+
+    # If no default admin was created (or already exists), fall back to any admin
+    # in the DB so seeded markets still have a creator.
+    if not admin:
+        res2 = await db.execute(select(User).where(User.is_admin == True).limit(1))
+        admin = res2.scalar_one_or_none()
+    if not admin:
+        # No admin to seed under. Skip the whole seed (research preview safety).
+        await db.commit()
+        return
 
     # Per-market idempotent seed: each sample is inserted only if its id is missing.
     samples = [

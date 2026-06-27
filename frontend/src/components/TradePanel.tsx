@@ -22,7 +22,7 @@ export function TradePanel({ market, onTraded }: { market: Market; onTraded?: ()
     setLimitPrice((side === "YES" ? market.current_yes_price : 1 - market.current_yes_price).toFixed(2));
   }, [side, market.current_yes_price]);
 
-  useEffect(() => { setMsg(null); }, [side, tab, market.id, amount, shares, limitPrice]);
+  useEffect(() => { setMsg(null); }, [side, tab, market.id, amount, shares]);
 
   const px = side === "YES" ? market.current_yes_price : 1 - market.current_yes_price;
 
@@ -149,7 +149,7 @@ export function TradePanel({ market, onTraded }: { market: Market; onTraded?: ()
           <div className="grid grid-cols-4 gap-1.5 mb-5 mt-2">
             {[10, 25, 100, "Max"].map((v) => (
               <button key={String(v)}
-                      onClick={() => setAmount(v === "Max" ? Math.floor(user.cash).toString() : String(v))}
+                      onClick={() => setAmount(v === "Max" ? Math.floor(user.cash * 0.95).toString() : String(v))}
                       className="h-8 text-xs rounded-md bg-ink-50 dark:bg-ink-800 hover:bg-ink-100 dark:hover:bg-ink-700 font-medium">
                 {typeof v === "number" ? `$${v}` : v === "Max" ? "Máx" : v}
               </button>

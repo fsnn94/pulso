@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     seed_on_startup: bool = True
     admin_email: str = "admin@pulso.local"
     admin_password: str = "admin123"
+    create_default_admin: bool = False  # set true ONLY when bootstrapping a fresh DB
 
     frontend_base_url: str = "http://localhost:3000"
     expose_verification_link_in_dev: bool = True

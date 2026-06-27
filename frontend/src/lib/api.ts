@@ -109,6 +109,10 @@ export const api = {
     request<{ ok: boolean; cash: number }>(`/admin/users/${userId}/reset-cash`, { method: "POST" }),
   deleteUser: (userId: string) =>
     request<{ ok: boolean; deleted: boolean }>(`/admin/users/${userId}`, { method: "DELETE" }),
+  promoteAdmin: (userId: string) =>
+    request<{ ok: boolean; is_admin: boolean }>(`/admin/users/${userId}/promote-admin`, { method: "POST" }),
+  revokeAdmin: (userId: string) =>
+    request<{ ok: boolean; is_admin: boolean }>(`/admin/users/${userId}/revoke-admin`, { method: "POST" }),
   auditExportUrl: (from?: string, to?: string) => {
     const p = new URLSearchParams();
     if (from) p.set("from", from);

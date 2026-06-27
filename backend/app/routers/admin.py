@@ -280,7 +280,11 @@ async def disable_user(
     if not target:
         raise HTTPException(404, "Usuario no encontrado")
     if target.is_admin:
-        raise HTTPException(403, "No se puede deshabilitar a un administrador")
+        admin_count = (await db.execute(
+            select(func.count()).select_from(User).where(User.is_admin == True)
+        )).scalar_one()
+        if admin_count <= 1:
+            raise HTTPException(409, "No se puede deshabilitar al unico administrador")
     target.disabled = True
     await db.commit()
     return {"ok": True, "disabled": True}
@@ -344,7 +348,11 @@ async def delete_user(
     if not target:
         raise HTTPException(404, "Usuario no encontrado")
     if target.is_admin:
-        raise HTTPException(403, "No se puede eliminar a un administrador")
+        admin_count = (await db.execute(
+            select(func.count()).select_from(User).where(User.is_admin == True)
+        )).scalar_one()
+        if admin_count <= 1:
+            raise HTTPException(409, "No se puede eliminar al unico administrador")
 
     # Check if user has trade history
     trade_count = (await db.execute(
@@ -365,3 +373,42 @@ async def delete_user(
     await db.delete(target)
     await db.commit()
     return {"ok": True, "deleted": True}
+
+
+@router.post("/users/{user_id}/promote-admin")
+async def promote_admin(
+    user_id: uuid.UUID,
+    user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Make a regular user an administrator."""
+    target = await db.get(User, user_id)
+    if not target:
+        raise HTTPException(404, "Usuario no encontrado")
+    if target.is_admin:
+        return {"ok": True, "is_admin": True}
+    target.is_admin = True
+    await db.commit()
+    return {"ok": True, "is_admin": True}
+
+
+@router.post("/users/{user_id}/revoke-admin")
+async def revoke_admin(
+    user_id: uuid.UUID,
+    user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Revoke admin status. Refuses if it would leave 0 admins."""
+    target = await db.get(User, user_id)
+    if not target:
+        raise HTTPException(404, "Usuario no encontrado")
+    if not target.is_admin:
+        return {"ok": True, "is_admin": False}
+    admin_count = (await db.execute(
+        select(func.count()).select_from(User).where(User.is_admin == True)
+    )).scalar_one()
+    if admin_count <= 1:
+        raise HTTPException(409, "No se puede revocar al unico administrador")
+    target.is_admin = False
+    await db.commit()
+    return {"ok": True, "is_admin": False}

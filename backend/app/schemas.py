@@ -127,6 +127,32 @@ class TradeOut(BaseModel):
     price: float
     quantity: float
     created_at: datetime
+    handle: str | None = None  # handle del trader (comprador), para linkear a su perfil
+
+
+# ---------- Public profiles (item #7) ----------
+class PublicProfileOut(BaseModel):
+    """Perfil público de un usuario: sin email ni datos KYC, solo handle + P&L."""
+    handle: str
+    created_at: datetime
+    realized_pnl: float       # neto de comisiones, sobre todas las posiciones (incl. cerradas)
+    unrealized_pnl: float     # posiciones abiertas valuadas a precio actual
+    open_positions: int       # cantidad de posiciones abiertas
+    markets_traded: int       # mercados distintos en los que operó
+    trades_count: int         # cantidad de operaciones ejecutadas
+    total_volume: float       # nocional operado (precio * cantidad)
+
+
+class PublicTradeOut(BaseModel):
+    """Una operación pública de un usuario, con título del mercado para mostrar."""
+    id: uuid.UUID
+    market_id: str
+    market_short_title: str | None
+    market_status: MarketStatus | None
+    side: Side
+    price: float
+    quantity: float
+    created_at: datetime
 
 
 # ---------- Portfolio ----------

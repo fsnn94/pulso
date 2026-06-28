@@ -7,7 +7,7 @@ from sqlalchemy import func, select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
-from ..models import Activity, Market, Order, OrderStatus, OrderAction, Side, Trade
+from ..models import Activity, Market, Order, OrderStatus, OrderAction, Side, Trade, User
 from ..schemas import MarketBase, MarketsOut, MarketSummaryOut, OrderOut, TradeOut
 
 router = APIRouter(prefix="/markets", tags=["markets"])
@@ -122,6 +122,15 @@ async def get_book(market_id: str, db: Annotated[AsyncSession, Depends(get_db)],
 @router.get("/{market_id}/trades", response_model=list[TradeOut])
 async def get_trades(market_id: str, db: Annotated[AsyncSession, Depends(get_db)], limit: int = 50):
     rs = await db.execute(
-        select(Trade).where(Trade.market_id == market_id).order_by(desc(Trade.created_at)).limit(limit)
+        select(Trade, User.handle)
+        .join(User, User.id == Trade.buyer_id)
+        .where(Trade.market_id == market_id)
+        .order_by(desc(Trade.created_at)).limit(limit)
     )
-    return list(rs.scalars().all())
+    return [
+        TradeOut(
+            id=t.id, market_id=t.market_id, side=t.side, price=t.price,
+            quantity=t.quantity, created_at=t.created_at, handle=handle,
+        )
+        for t, handle in rs.all()
+    ]

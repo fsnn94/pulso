@@ -175,13 +175,20 @@ function TradesView({ trades }: { trades: Trade[] }) {
   return (
     <div className="mt-6 rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-5 sm:p-6">
       <h2 className="font-semibold mb-3">Operaciones recientes</h2>
-      <div className="grid grid-cols-4 text-[11px] uppercase tracking-wider text-ink-400 dark:text-ink-500 pb-1.5 border-b border-ink-100 dark:border-ink-800">
-        <span>Lado</span><span>Precio</span><span>Tamaño</span><span className="text-right">Hora</span>
+      <div className="grid grid-cols-[1.4fr_1fr_1fr_1fr_1fr] text-[11px] uppercase tracking-wider text-ink-400 dark:text-ink-500 pb-1.5 border-b border-ink-100 dark:border-ink-800">
+        <span>Trader</span><span>Lado</span><span>Precio</span><span>Tamaño</span><span className="text-right">Hora</span>
       </div>
       {trades.length === 0 ? (
         <div className="py-4 text-xs text-ink-500">Aún no hay operaciones.</div>
       ) : trades.slice(0, 12).map((t) => (
-        <div key={t.id} className="grid grid-cols-4 py-1.5 text-sm num border-b border-ink-50 dark:border-ink-800/60 last:border-0">
+        <div key={t.id} className="grid grid-cols-[1.4fr_1fr_1fr_1fr_1fr] py-1.5 text-sm num border-b border-ink-50 dark:border-ink-800/60 last:border-0 items-center">
+          {t.handle ? (
+            <Link href={`/u/${encodeURIComponent(t.handle)}`} className="truncate font-medium text-ink-700 dark:text-ink-300 hover:text-accent-500">
+              @{t.handle}
+            </Link>
+          ) : (
+            <span className="text-ink-400 dark:text-ink-500">—</span>
+          )}
           <span className={t.side === "YES" ? "text-yes-500 font-medium" : "text-no-500 font-medium"}>{t.side}</span>
           <span>{(t.price * 100).toFixed(1)}¢</span>
           <span>{t.quantity.toLocaleString()}</span>

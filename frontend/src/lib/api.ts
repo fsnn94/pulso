@@ -79,6 +79,11 @@ export const api = {
   // portfolio
   portfolio:  () => request<Portfolio>("/portfolio"),
 
+  // public profiles (item #7)
+  userProfile: (handle: string) => request<PublicProfile>(`/users/${encodeURIComponent(handle)}`),
+  userTrades:  (handle: string, limit = 50) =>
+    request<PublicTrade[]>(`/users/${encodeURIComponent(handle)}/trades?limit=${limit}`),
+
   // proposals
   submitProposal: (b: ProposalIn) =>
     request<Proposal>("/markets/proposals", { method: "POST", body: JSON.stringify(b) }),
@@ -198,6 +203,18 @@ export type Book = {
 export type Trade = {
   id: string; market_id: string; side: "YES" | "NO";
   price: number; quantity: number; created_at: string;
+  handle?: string | null;
+};
+export type PublicProfile = {
+  handle: string; created_at: string;
+  realized_pnl: number; unrealized_pnl: number;
+  open_positions: number; markets_traded: number;
+  trades_count: number; total_volume: number;
+};
+export type PublicTrade = {
+  id: string; market_id: string;
+  market_short_title: string | null; market_status: MarketStatus | null;
+  side: "YES" | "NO"; price: number; quantity: number; created_at: string;
 };
 export type OrderIn = {
   market_id: string; side: "YES" | "NO";

@@ -39,14 +39,15 @@ export default function AdminCashflowPage() {
     }
   });
 
-  if (loading) return <div className="p-12 text-center text-sm text-ink-500">Cargando...</div>;
-  if (!user?.is_admin) return <div className="p-12 text-center text-sm text-ink-500">Solo para admins.</div>;
-
+  // Hooks must run before any early return (Rules of Hooks / React #310).
   const series = useMemo(() => {
     if (!kpi) return [];
     const maxV = Math.max(1, ...kpi.series.map((p) => p.volume));
     return kpi.series.map((p, i) => ({ t: new Date(p.day).getTime(), p: p.volume / maxV }));
   }, [kpi]);
+
+  if (loading) return <div className="p-12 text-center text-sm text-ink-500">Cargando...</div>;
+  if (!user?.is_admin) return <div className="p-12 text-center text-sm text-ink-500">Solo para admins.</div>;
 
   const exportFor = (days: number) => {
     const to = new Date();

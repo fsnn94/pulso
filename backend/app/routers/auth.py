@@ -4,7 +4,9 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import or_, select
+import re
+
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import get_settings
@@ -12,7 +14,9 @@ from ..db import get_db
 from ..deps import get_current_user
 from ..email import issue_verification_token, send_verification_email, verification_link
 from ..models import EmailVerification, User
-from ..schemas import KycIn, LoginIn, RegisterIn, TokenOut, UserOut, VerifyIn
+from ..schemas import (
+    ChangeHandleIn, ChangePasswordIn, KycIn, LoginIn, RegisterIn, TokenOut, UserOut, VerifyIn,
+)
 from ..security import create_access_token, hash_password, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -70,6 +74,55 @@ async def login(payload: LoginIn, db: Annotated[AsyncSession, Depends(get_db)]):
 
 @router.get("/me", response_model=UserOut)
 async def me(user: Annotated[User, Depends(get_current_user)]):
+    return user
+
+
+# ---------- account security (item #8) ----------
+
+HANDLE_RE = re.compile(r"^[A-Za-z0-9_]{2,40}$")
+
+
+@router.post("/change-password", response_model=TokenOut)
+async def change_password(
+    payload: ChangePasswordIn,
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Change the password. Requires the current password and issues a fresh
+    token so the client keeps a valid session."""
+    if not verify_password(payload.current_password, user.password_hash):
+        raise HTTPException(403, "La contraseña actual es incorrecta")
+    if payload.new_password == payload.current_password:
+        raise HTTPException(400, "La nueva contraseña debe ser distinta de la actual")
+    user.password_hash = hash_password(payload.new_password)
+    await db.commit()
+    return TokenOut(access_token=create_access_token(user.id, is_admin=user.is_admin))
+
+
+@router.patch("/handle", response_model=UserOut)
+async def change_handle(
+    payload: ChangeHandleIn,
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Change the public @handle. Validates format and case-insensitive uniqueness."""
+    new_handle = payload.handle.strip()
+    if not HANDLE_RE.match(new_handle):
+        raise HTTPException(400, "El usuario solo puede tener letras, números y guion bajo (2-40)")
+    if new_handle.lower() == user.handle.lower():
+        # Allow pure case changes; otherwise no-op.
+        user.handle = new_handle
+        await db.commit()
+        await db.refresh(user)
+        return user
+    taken = await db.execute(
+        select(User).where(func.lower(User.handle) == new_handle.lower(), User.id != user.id)
+    )
+    if taken.scalar_one_or_none():
+        raise HTTPException(409, "El usuario ya está en uso")
+    user.handle = new_handle
+    await db.commit()
+    await db.refresh(user)
     return user
 
 

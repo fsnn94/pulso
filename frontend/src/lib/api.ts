@@ -53,6 +53,10 @@ export const api = {
   login: (b: { email: string; password: string }) =>
     request<{ access_token: string }>("/auth/login", { method: "POST", body: JSON.stringify(b) }),
   me: () => request<User>("/auth/me"),
+  changePassword: (b: { current_password: string; new_password: string }) =>
+    request<{ access_token: string }>("/auth/change-password", { method: "POST", body: JSON.stringify(b) }),
+  changeHandle: (handle: string) =>
+    request<User>("/auth/handle", { method: "PATCH", body: JSON.stringify({ handle }) }),
   verifyEmail: (token: string) => request<User>("/auth/verify", { method: "POST", body: JSON.stringify({ token }) }),
   resendVerification: () => request<{ access_token: string; verification_link?: string | null }>("/auth/resend-verification", { method: "POST" }),
   submitKyc: (b: { full_name: string; country: string; id_number: string; date_of_birth: string }) =>
@@ -78,6 +82,13 @@ export const api = {
 
   // portfolio
   portfolio:  () => request<Portfolio>("/portfolio"),
+
+  // notifications (item #8)
+  notifications: (unread_only = false, limit = 50) =>
+    request<Notification[]>(`/notifications?unread_only=${unread_only}&limit=${limit}`),
+  unreadCount: () => request<{ unread: number }>("/notifications/unread-count"),
+  markAllRead: () => request<{ ok: boolean }>("/notifications/read-all", { method: "POST" }),
+  markRead: (id: string) => request<Notification>(`/notifications/${id}/read`, { method: "POST" }),
 
   // public profiles (item #7)
   userProfile: (handle: string) => request<PublicProfile>(`/users/${encodeURIComponent(handle)}`),
@@ -204,6 +215,10 @@ export type Trade = {
   id: string; market_id: string; side: "YES" | "NO";
   price: number; quantity: number; created_at: string;
   handle?: string | null;
+};
+export type Notification = {
+  id: string; kind: string; title: string; body: string;
+  market_id: string | null; read_at: string | null; created_at: string;
 };
 export type PublicProfile = {
   handle: string; created_at: string;

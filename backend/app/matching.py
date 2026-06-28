@@ -41,6 +41,7 @@ from .models import (
 )
 
 COMMISSION_RATE_KEY = "commission_rate"
+from .notifications import notify
 from .schemas import OrderIn
 
 EPSILON = 1e-9
@@ -221,6 +222,12 @@ async def _fill_market_buy(db: AsyncSession, market: Market, user: User, order: 
     _record_activity(db, user_id=user.id, market_id=market.id, kind="FILL",
                      side=order.side, quantity=order.quantity, price=fill_price, total=cost,
                      note=f"Compra a mercado {order.side.value}")
+    await notify(
+        db, user_id=user.id, kind="BUY_FILLED", market_id=market.id,
+        title=f"Compra ejecutada · {market.short_title}",
+        body=f"Compraste {order.quantity:g} contratos {order.side.value} a {fill_price * 100:.1f}¢ "
+             f"(costo {cost:.2f}).",
+    )
 
     order.filled_quantity = order.quantity
     order.avg_fill_price = fill_price
@@ -338,6 +345,16 @@ async def _try_cross_match(db: AsyncSession, market: Market, user: User, taker: 
         _record_activity(db, user_id=maker.user_id, market_id=market.id, kind="FILL",
                          side=maker.side, quantity=qty, price=maker_price, total=maker_price * qty,
                          note=f"Cruce LIMIT contra {taker.side.value}")
+        await notify(
+            db, user_id=user.id, kind="BUY_FILLED", market_id=market.id,
+            title=f"Orden LIMIT ejecutada · {market.short_title}",
+            body=f"Compraste {qty:g} contratos {taker.side.value} a {taker_price * 100:.1f}¢ por cruce.",
+        )
+        await notify(
+            db, user_id=maker.user_id, kind="BUY_FILLED", market_id=market.id,
+            title=f"Orden LIMIT ejecutada · {market.short_title}",
+            body=f"Compraste {qty:g} contratos {maker.side.value} a {maker_price * 100:.1f}¢ por cruce.",
+        )
 
         market.volume_24h += (taker_price + maker_price) * qty
         _update_market_price(market, taker.side, taker_price)
@@ -380,6 +397,12 @@ async def _fill_market_sell(db: AsyncSession, market: Market, user: User, order:
     _record_activity(db, user_id=user.id, market_id=market.id, kind="FILL",
                      side=order.side, quantity=order.quantity, price=fill_price, total=proceeds,
                      note=f"Venta a mercado {order.side.value} (realizado {realized:+.2f})")
+    await notify(
+        db, user_id=user.id, kind="SELL_FILLED", market_id=market.id,
+        title=f"Posición cerrada · {market.short_title}",
+        body=f"Vendiste {order.quantity:g} contratos {order.side.value} a {fill_price * 100:.1f}¢ "
+             f"(ingreso {proceeds:.2f}, realizado {realized:+.2f}).",
+    )
 
     order.filled_quantity = order.quantity
     order.avg_fill_price = fill_price
@@ -451,11 +474,22 @@ async def resolve_market(db: AsyncSession, market: Market, outcome: Side) -> int
                              side=p.side, quantity=p.shares, price=1.0, total=payout,
                              note=f"Resuelto {outcome.value} — pagado")
             p.realized_pnl += profit - commission  # net of the fee
+            await notify(
+                db, user_id=p.user_id, kind="MARKET_RESOLVED", market_id=market.id,
+                title=f"Mercado resuelto {outcome.value} · {market.short_title}",
+                body=f"Tu posición {p.side.value} ganó: {p.shares:g} contratos pagados a $1 "
+                     f"(cobraste {payout:.2f}).",
+            )
         else:
             _record_activity(db, user_id=p.user_id, market_id=market.id, kind="RESOLVED",
                              side=p.side, quantity=p.shares, price=0.0, total=0.0,
                              note=f"Resuelto {outcome.value} — posición expirada")
             p.realized_pnl += (0.0 - p.avg_cost) * p.shares
+            await notify(
+                db, user_id=p.user_id, kind="MARKET_RESOLVED", market_id=market.id,
+                title=f"Mercado resuelto {outcome.value} · {market.short_title}",
+                body=f"Tu posición {p.side.value} ({p.shares:g} contratos) expiró sin valor.",
+            )
         p.shares = 0.0
         paid += 1
 

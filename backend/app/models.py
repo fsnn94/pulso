@@ -212,6 +212,25 @@ class Activity(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
 
 
+class Notification(Base):
+    """Lean per-user inbox item (item #8). Kept short on purpose and pruned to
+    the latest N per user (see notifications.notify) so the table stays small."""
+    __tablename__ = "notifications"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(String(40), nullable=False)   # BUY_FILLED, SELL_FILLED, MARKET_CLOSED, MARKET_RESOLVED, PROPOSAL_APPROVED
+    title: Mapped[str] = mapped_column(String(120), nullable=False)
+    body: Mapped[str] = mapped_column(String(280), nullable=False)
+    market_id: Mapped[str | None] = mapped_column(String(64), ForeignKey("markets.id"), nullable=True)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+    __table_args__ = (
+        Index("ix_notifications_user_created", "user_id", "created_at"),
+    )
+
+
 class AppSetting(Base):
     """Mutable runtime settings editable from the admin UI (e.g. commission rate).
     Key/value for forward-compat; seeded lazily from config defaults."""

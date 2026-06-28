@@ -48,6 +48,15 @@ class VerifyIn(BaseModel):
     token: str
 
 
+class ChangePasswordIn(BaseModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=6, max_length=128)
+
+
+class ChangeHandleIn(BaseModel):
+    handle: str = Field(min_length=2, max_length=40)
+
+
 class KycIn(BaseModel):
     full_name: str = Field(min_length=2, max_length=160)
     country: str = Field(min_length=2, max_length=2)
@@ -128,6 +137,18 @@ class TradeOut(BaseModel):
     quantity: float
     created_at: datetime
     handle: str | None = None  # handle del trader (comprador), para linkear a su perfil
+
+
+# ---------- Notifications (item #8) ----------
+class NotificationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    kind: str
+    title: str
+    body: str
+    market_id: str | None
+    read_at: datetime | None
+    created_at: datetime
 
 
 # ---------- Public profiles (item #7) ----------

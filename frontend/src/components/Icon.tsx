@@ -4,7 +4,7 @@ import * as React from "react";
 type IconName =
   | "search" | "sun" | "moon" | "star" | "star-fill" | "arrow-up" | "arrow-down"
   | "home" | "wallet" | "menu" | "close" | "info" | "chevron-right" | "chevron-down"
-  | "shield" | "logo" | "logout" | "plus" | "user";
+  | "shield" | "logo" | "logout" | "plus" | "user" | "bell";
 
 export function Icon({
   name, className = "w-4 h-4", strokeWidth = 1.8,
@@ -33,6 +33,7 @@ export function Icon({
     case "logout":   return (<svg {...common}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>);
     case "plus":     return (<svg {...common}><path d="M12 5v14M5 12h14"/></svg>);
     case "user":     return (<svg {...common}><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>);
+    case "bell":     return (<svg {...common}><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>);
     case "logo":     return (
       <svg viewBox="0 0 24 24" className={className} fill="none">
         <rect x="2.5" y="2.5" width="19" height="19" rx="5" stroke="currentColor" strokeWidth="1.6"/>

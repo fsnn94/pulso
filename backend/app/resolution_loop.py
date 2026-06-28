@@ -35,9 +35,10 @@ from .config import get_settings
 from .db import session_scope
 from .matching import resolve_market, void_market
 from .models import (
-    Market, MarketStatus, ResolutionOutcome, ResolutionProposal,
+    Market, MarketStatus, Position, ResolutionOutcome, ResolutionProposal,
     ResolutionProposalStatus, Side,
 )
+from .notifications import notify
 from .resolvers import RESOLVERS
 from .ws import broadcast_market_event
 
@@ -57,6 +58,17 @@ async def _close_expired(db: AsyncSession) -> list[Market]:
     for m in rs.scalars().all():
         m.status = MarketStatus.CLOSED
         m.closed_at = now
+        # Notify everyone who ever held a position in this market.
+        participants = (await db.execute(
+            select(Position.user_id).where(Position.market_id == m.id).distinct()
+        )).scalars().all()
+        for uid in participants:
+            await notify(
+                db, user_id=uid, kind="MARKET_CLOSED", market_id=m.id,
+                title=f"Mercado cerrado · {m.short_title}",
+                body="Se cerró la operatoria de un mercado en el que participás. "
+                     "Queda a la espera de resolución.",
+            )
         closed.append(m)
     return closed
 

@@ -15,6 +15,7 @@ from ..db import get_db
 from ..config import get_settings
 from ..deps import require_admin
 from ..matching import resolve_market, get_commission_rate, COMMISSION_RATE_KEY
+from ..notifications import notify
 from ..models import (
     Activity, AmlAlert, AmlMute, AppSetting, Commission, EmailVerification,
     Market, MarketDispute, MarketProposal, MarketStatus, Order, Position,
@@ -120,6 +121,11 @@ async def review_proposal(
     db.add(market)
     p.status = ProposalStatus.APPROVED
     p.approved_market_id = market.id
+    await notify(
+        db, user_id=p.submitter_id, kind="PROPOSAL_APPROVED", market_id=market.id,
+        title=f"Tu mercado fue habilitado · {market.short_title}",
+        body="Tu propuesta fue aprobada y el mercado ya está abierto para operar.",
+    )
     await db.commit(); await db.refresh(p)
     await broadcast_market_event(market.id, {"type": "created", "market_id": market.id})
     await broadcast_market_event(None, {"type": "proposal_reviewed", "id": str(p.id), "decision": "APPROVED", "market_id": market.id})

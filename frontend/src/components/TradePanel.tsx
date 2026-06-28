@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api, Market, OrderIn } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { usd } from "@/lib/format";
+import { statusEs, usd } from "@/lib/format";
 
 type Tab = "market" | "limit";
 
@@ -83,6 +83,23 @@ export function TradePanel({ market, onTraded }: { market: Market; onTraded?: ()
       setMsg({ kind: "err", text: e?.message ?? "La orden falló" });
     } finally { setBusy(false); }
   };
+
+  // Only OPEN markets accept orders (the backend rejects the rest); don't show
+  // the trade form for resolved/closed/voided/disputed/proposed markets.
+  if (market.status !== "OPEN") {
+    return (
+      <div className="rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-5 text-sm">
+        <div className="font-semibold mb-2">Operaciones cerradas</div>
+        <p className="text-ink-500 dark:text-ink-400">
+          Este mercado está en estado{" "}
+          <span className="font-medium text-ink-700 dark:text-ink-300">{statusEs(market.status)}</span>{" "}
+          y ya no acepta órdenes.
+          {market.status === "RESOLVED" && " Las posiciones ganadoras ya fueron liquidadas a $1 por contrato."}
+          {market.status === "VOIDED" && " Las posiciones abiertas fueron reembolsadas a su costo promedio."}
+        </p>
+      </div>
+    );
+  }
 
   if (!user) {
     return (

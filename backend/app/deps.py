@@ -10,7 +10,7 @@ from sqlalchemy import select
 
 from .db import get_db
 from .models import User
-from .security import decode_token
+from .security import decode_token, password_token_version
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -32,6 +32,9 @@ async def get_current_user(
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Usuario no encontrado")
+    # Tie the token to the current password: changing it invalidates old tokens.
+    if payload.get("pv") != password_token_version(user.password_hash):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "La sesión expiró — inicia sesión nuevamente")
     return user
 
 

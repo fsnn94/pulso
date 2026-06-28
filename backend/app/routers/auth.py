@@ -53,7 +53,7 @@ async def register(payload: RegisterIn, db: Annotated[AsyncSession, Depends(get_
     await send_verification_email(user, link)
 
     return TokenOut(
-        access_token=create_access_token(user.id, is_admin=user.is_admin),
+        access_token=create_access_token(user.id, is_admin=user.is_admin, password_hash=user.password_hash),
         verification_link=link if s.expose_verification_link_in_dev else None,
     )
 
@@ -69,7 +69,7 @@ async def login(payload: LoginIn, db: Annotated[AsyncSession, Depends(get_db)]):
         raise HTTPException(401, "Usuario/email o contraseña inválidos")
     if user.disabled:
         raise HTTPException(403, "La cuenta ha quedado inhabilitada")
-    return TokenOut(access_token=create_access_token(user.id, is_admin=user.is_admin))
+    return TokenOut(access_token=create_access_token(user.id, is_admin=user.is_admin, password_hash=user.password_hash))
 
 
 @router.get("/me", response_model=UserOut)
@@ -88,15 +88,16 @@ async def change_password(
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Change the password. Requires the current password and issues a fresh
-    token so the client keeps a valid session."""
+    """Change the password. Requires the current password; invalidates every
+    previously issued token (via the `pv` claim) and returns a fresh one so the
+    client that changed it keeps a valid session while other sessions are cut."""
     if not verify_password(payload.current_password, user.password_hash):
         raise HTTPException(403, "La contraseña actual es incorrecta")
     if payload.new_password == payload.current_password:
         raise HTTPException(400, "La nueva contraseña debe ser distinta de la actual")
     user.password_hash = hash_password(payload.new_password)
     await db.commit()
-    return TokenOut(access_token=create_access_token(user.id, is_admin=user.is_admin))
+    return TokenOut(access_token=create_access_token(user.id, is_admin=user.is_admin, password_hash=user.password_hash))
 
 
 @router.patch("/handle", response_model=UserOut)
@@ -165,7 +166,7 @@ async def resend_verification(
     link = verification_link(s.frontend_base_url, token)
     await send_verification_email(user, link)
     return TokenOut(
-        access_token=create_access_token(user.id, is_admin=user.is_admin),
+        access_token=create_access_token(user.id, is_admin=user.is_admin, password_hash=user.password_hash),
         verification_link=link if s.expose_verification_link_in_dev else None,
     )
 

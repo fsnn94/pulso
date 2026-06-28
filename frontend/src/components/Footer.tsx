@@ -1,4 +1,7 @@
+import Link from "next/link";
 import { Icon } from "./Icon";
+
+type FooterLink = { label: string; href?: string };
 
 export function Footer() {
   return (
@@ -13,9 +16,9 @@ export function Footer() {
             Una plataforma de predicción de grado académico. Pulso es una herramienta para estudiar probabilidades — no es una casa de bolsa ni un sitio de apuestas.
           </p>
         </div>
-        <Col title="Producto" items={["Mercados", "Cómo funciona", "API", "Estado"]} />
-        <Col title="Recursos" items={["Metodología", "Reglas de resolución", "Glosario", "Educación"]} />
-        <Col title="Cumplimiento" items={["Descargo", "Términos", "Privacidad", "Restricciones regionales"]} />
+        <Col title="Producto" items={[{ label: "Mercados", href: "/" }, { label: "Cómo funciona", href: "/como-funciona" }, { label: "API" }, { label: "Estado" }]} />
+        <Col title="Recursos" items={[{ label: "Metodología" }, { label: "Reglas de resolución" }, { label: "Glosario" }, { label: "Educación" }]} />
+        <Col title="Cumplimiento" items={[{ label: "Descargo" }, { label: "Términos" }, { label: "Privacidad" }, { label: "Restricciones regionales" }]} />
       </div>
       <div className="border-t border-ink-100 dark:border-ink-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row gap-3 sm:items-center text-xs text-ink-500 dark:text-ink-400">
@@ -27,12 +30,18 @@ export function Footer() {
   );
 }
 
-function Col({ title, items }: { title: string; items: string[] }) {
+function Col({ title, items }: { title: string; items: FooterLink[] }) {
   return (
     <div>
       <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-3">{title}</div>
       <ul className="space-y-2">
-        {items.map((i) => (<li key={i}><a className="hover:text-accent-500 cursor-pointer">{i}</a></li>))}
+        {items.map((i) => (
+          <li key={i.label}>
+            {i.href
+              ? <Link href={i.href} className="hover:text-accent-500">{i.label}</Link>
+              : <a className="hover:text-accent-500 cursor-pointer">{i.label}</a>}
+          </li>
+        ))}
       </ul>
     </div>
   );

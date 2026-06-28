@@ -212,6 +212,27 @@ class Activity(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
 
 
+class CommissionSource(str, PyEnum):
+    CLOSE   = "CLOSE"    # realized by closing a position at a profit (MARKET SELL)
+    RESOLVE = "RESOLVE"  # realized by a winning position when the market resolves
+
+
+class Commission(Base):
+    """House fee charged on each realized gain. The admin "wallet" total is the
+    sum of `amount` across this ledger — a proper auditable fee ledger rather
+    than a magic user balance."""
+    __tablename__ = "commissions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    market_id: Mapped[str | None] = mapped_column(String(64), ForeignKey("markets.id"), nullable=True, index=True)
+    source: Mapped[CommissionSource] = mapped_column(Enum(CommissionSource), nullable=False)
+    gross_profit: Mapped[float] = mapped_column(Float, nullable=False)  # realized gain the fee was computed on
+    rate: Mapped[float] = mapped_column(Float, nullable=False)          # e.g. 0.05
+    amount: Mapped[float] = mapped_column(Float, nullable=False)        # gross_profit * rate, debited from the user
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+
 class AmlSeverity(str, PyEnum):
     INFO    = "INFO"
     LOW     = "LOW"

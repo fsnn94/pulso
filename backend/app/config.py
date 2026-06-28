@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
 
     starting_credits: float = 10_000.0
+    commission_rate: float = 0.05  # house fee charged on each realized gain (5% of profit)
     tick_size: float = 0.01
     price_engine_interval: float = 2.0
 

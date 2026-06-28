@@ -205,8 +205,26 @@ class CashflowKpiOut(BaseModel):
     open_markets: int
     pending_proposals: int
     unresolved_pnl_house: float
+    # Commission wallet (house fee ledger)
+    commission_total: float          # all-time wallet balance
+    commission_period: float         # within the selected days window
+    commission_24h: float
+    commission_count: int            # number of fees charged all-time
+    commission_by_market: list[dict] # [{market_id, title, amount, count}]
     series: list[dict]
     by_category: list[dict]
+
+
+class MarketSummaryOut(BaseModel):
+    market_id: str
+    status: MarketStatus
+    resolved_outcome: Side | None
+    resolved_at: datetime | None
+    closes_at: datetime
+    participants: int       # distinct users who traded this market
+    total_volume: float     # sum of trade notional (price * qty)
+    total_contracts: float  # sum of traded quantity
+    total_payout: float     # total credited to winners at resolution
 
 
 class AdminUserRow(BaseModel):

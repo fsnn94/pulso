@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { useMarketSocket } from "@/lib/ws";
 import { LineChart } from "@/components/charts";
 import { TradePanel } from "@/components/TradePanel";
+import { MarketSummaryCard } from "@/components/MarketSummaryCard";
 import { Icon } from "@/components/Icon";
 import { compact, pct, timeAgo, statusEs, outcomeEs } from "@/lib/format";
 
@@ -107,7 +108,8 @@ export default function MarketDetailPage() {
           <TradesView trades={trades} />
         </div>
 
-        <div className="lg:sticky lg:top-24 lg:self-start">
+        <div className="lg:sticky lg:top-24 lg:self-start space-y-4">
+          {(market.status === "RESOLVED" || market.status === "VOIDED") && <MarketSummaryCard marketId={id} />}
           <TradePanel market={market} onTraded={() => setTick((t) => t + 1)}/>
         </div>
       </div>

@@ -16,7 +16,7 @@ from ..config import get_settings
 from ..deps import require_admin
 from ..matching import resolve_market
 from ..models import (
-    Activity, AmlAlert, AmlMute, EmailVerification,
+    Activity, AmlAlert, AmlMute, Commission, EmailVerification,
     Market, MarketDispute, MarketProposal, MarketStatus, Order, Position,
     ProposalStatus, ResolutionProposal, Trade, User,
 )
@@ -175,6 +175,33 @@ async def cashflow(
     )
     by_category = [{"category": row.category, "volume": float(row.volume), "trades": int(row.trades)} for row in cat_rs]
 
+    # ----- Commission wallet (house fee ledger) -----
+    commission_total = (await db.execute(
+        select(func.coalesce(func.sum(Commission.amount), 0.0))
+    )).scalar_one()
+    commission_count = (await db.execute(
+        select(func.count(Commission.id))
+    )).scalar_one()
+    commission_period = (await db.execute(
+        select(func.coalesce(func.sum(Commission.amount), 0.0)).where(Commission.created_at >= cutoff_period)
+    )).scalar_one()
+    commission_24h = (await db.execute(
+        select(func.coalesce(func.sum(Commission.amount), 0.0)).where(Commission.created_at >= cutoff_24h)
+    )).scalar_one()
+    comm_mkt_rs = await db.execute(
+        select(
+            Commission.market_id,
+            Market.title,
+            func.coalesce(func.sum(Commission.amount), 0.0).label("amount"),
+            func.count(Commission.id).label("count"),
+        ).outerjoin(Market, Market.id == Commission.market_id)
+        .group_by(Commission.market_id, Market.title).order_by(desc("amount")).limit(20)
+    )
+    commission_by_market = [
+        {"market_id": row.market_id, "title": row.title, "amount": float(row.amount), "count": int(row.count)}
+        for row in comm_mkt_rs
+    ]
+
     return CashflowKpiOut(
         volume_24h=float(vol_24h or 0.0),
         trades_24h=int(trades_24h or 0),
@@ -182,6 +209,11 @@ async def cashflow(
         open_markets=int(open_markets or 0),
         pending_proposals=int(pending or 0),
         unresolved_pnl_house=0.0,
+        commission_total=float(commission_total or 0.0),
+        commission_period=float(commission_period or 0.0),
+        commission_24h=float(commission_24h or 0.0),
+        commission_count=int(commission_count or 0),
+        commission_by_market=commission_by_market,
         series=series, by_category=by_category,
     )
 

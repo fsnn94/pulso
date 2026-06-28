@@ -67,6 +67,7 @@ export const api = {
     return request<{ items: Market[] }>(`/markets?${p}`);
   },
   getMarket:  (id: string) => request<Market>(`/markets/${id}`),
+  marketSummary: (id: string) => request<MarketSummary>(`/markets/${id}/summary`),
   getBook:    (id: string) => request<Book>(`/markets/${id}/book`),
   getTrades:  (id: string) => request<Trade[]>(`/markets/${id}/trades`),
 
@@ -242,8 +243,16 @@ export type Proposal = {
 export type CashflowKpi = {
   volume_24h: number; trades_24h: number; active_users_24h: number;
   open_markets: number; pending_proposals: number; unresolved_pnl_house: number;
+  commission_total: number; commission_period: number; commission_24h: number;
+  commission_count: number;
+  commission_by_market: { market_id: string | null; title: string | null; amount: number; count: number }[];
   series: { day: string; volume: number; trades: number }[];
   by_category: { category: string; volume: number; trades: number }[];
+};
+export type MarketSummary = {
+  market_id: string; status: MarketStatus;
+  resolved_outcome: "YES" | "NO" | null; resolved_at: string | null; closes_at: string;
+  participants: number; total_volume: number; total_contracts: number; total_payout: number;
 };
 export type AdminUserRow = {
   id: string; handle: string; email: string; cash: number;

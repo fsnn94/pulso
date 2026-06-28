@@ -3,12 +3,12 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select, desc
+from sqlalchemy import func, select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
-from ..models import Market, Order, OrderStatus, OrderAction, Side, Trade
-from ..schemas import MarketBase, MarketsOut, OrderOut, TradeOut
+from ..models import Activity, Market, Order, OrderStatus, OrderAction, Side, Trade
+from ..schemas import MarketBase, MarketsOut, MarketSummaryOut, OrderOut, TradeOut
 
 router = APIRouter(prefix="/markets", tags=["markets"])
 
@@ -50,6 +50,42 @@ async def get_market(market_id: str, db: Annotated[AsyncSession, Depends(get_db)
     if not m:
         raise HTTPException(404, "Mercado no encontrado")
     return m
+
+
+@router.get("/{market_id}/summary", response_model=MarketSummaryOut)
+async def market_summary(market_id: str, db: Annotated[AsyncSession, Depends(get_db)]):
+    """Aggregate stats for a market (useful once it's resolved): participants,
+    total movement, contracts traded and total payout distributed to winners."""
+    m = (await db.execute(select(Market).where(Market.id == market_id))).scalar_one_or_none()
+    if not m:
+        raise HTTPException(404, "Mercado no encontrado")
+
+    vol, contracts = (await db.execute(
+        select(
+            func.coalesce(func.sum(Trade.price * Trade.quantity), 0.0),
+            func.coalesce(func.sum(Trade.quantity), 0.0),
+        ).where(Trade.market_id == market_id)
+    )).one()
+
+    buyer_ids = (await db.execute(
+        select(Trade.buyer_id).where(Trade.market_id == market_id).distinct()
+    )).scalars().all()
+    seller_ids = (await db.execute(
+        select(Trade.seller_id).where(Trade.market_id == market_id, Trade.seller_id.isnot(None)).distinct()
+    )).scalars().all()
+    participants = len(set(buyer_ids) | set(seller_ids))
+
+    total_payout = (await db.execute(
+        select(func.coalesce(func.sum(Activity.total), 0.0))
+        .where(Activity.market_id == market_id, Activity.kind == "RESOLVED", Activity.total > 0)
+    )).scalar_one()
+
+    return MarketSummaryOut(
+        market_id=m.id, status=m.status, resolved_outcome=m.resolved_outcome,
+        resolved_at=m.resolved_at, closes_at=m.closes_at,
+        participants=participants, total_volume=float(vol or 0.0),
+        total_contracts=float(contracts or 0.0), total_payout=float(total_payout or 0.0),
+    )
 
 
 @router.get("/{market_id}/book")

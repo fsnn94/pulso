@@ -88,6 +88,55 @@ export default function AdminCashflowPage() {
         <Kpi label="Propuestas pendientes" value={kpi ? kpi.pending_proposals.toString() : "—"} link="/admin/proposals"/>
       </div>
 
+      {/* Comisiones / wallet administrativo */}
+      <div className="rounded-xl border border-accent-500/20 bg-accent-500/[0.03] dark:bg-accent-500/5 p-5 mb-6">
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 className="font-semibold">Wallet de comisiones</h2>
+            <p className="text-xs text-ink-500 dark:text-ink-400 mt-0.5">
+              Fee del 5% sobre cada ganancia realizada (al cerrar posiciones y al resolverse el mercado).
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="text-[10px] uppercase tracking-wider text-ink-500 dark:text-ink-400">Total acumulado</div>
+            <div className="text-3xl font-semibold num text-accent-500">{kpi ? usd(kpi.commission_total) : "—"}</div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <MiniStat label={`Período (${days}d)`} value={kpi ? usd(kpi.commission_period) : "—"}/>
+          <MiniStat label="Últimas 24h"          value={kpi ? usd(kpi.commission_24h) : "—"}/>
+          <MiniStat label="Cobros totales"       value={kpi ? kpi.commission_count.toLocaleString() : "—"}/>
+        </div>
+
+        {kpi?.commission_by_market.length ? (
+          <table className="w-full text-sm">
+            <thead className="text-[11px] uppercase tracking-wider text-ink-500 dark:text-ink-400">
+              <tr className="border-b border-ink-100 dark:border-ink-800">
+                <th className="text-left py-2 font-medium">Mercado</th>
+                <th className="text-right py-2 font-medium">Cobros</th>
+                <th className="text-right py-2 font-medium">Comisión</th>
+              </tr>
+            </thead>
+            <tbody>
+              {kpi.commission_by_market.map((c) => (
+                <tr key={c.market_id ?? "—"} className="border-b border-ink-50 dark:border-ink-800/50 last:border-0">
+                  <td className="py-2">
+                    {c.market_id
+                      ? <Link href={`/markets/${c.market_id}`} className="hover:text-accent-500">{c.title ?? c.market_id}</Link>
+                      : <span className="text-ink-500">—</span>}
+                  </td>
+                  <td className="py-2 text-right num">{c.count.toLocaleString()}</td>
+                  <td className="py-2 text-right num font-medium">{usd(c.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="text-sm text-ink-500 dark:text-ink-400 py-2">Aún no se cobraron comisiones.</div>
+        )}
+      </div>
+
       <div className="grid lg:grid-cols-[1fr_360px] gap-6">
         {/* Historical + categories */}
         <div className="space-y-4">
@@ -154,6 +203,15 @@ export default function AdminCashflowPage() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-3">
+      <div className="text-[10px] uppercase tracking-wider text-ink-500 dark:text-ink-400">{label}</div>
+      <div className="num font-semibold text-lg mt-0.5">{value}</div>
     </div>
   );
 }

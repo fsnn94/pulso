@@ -36,8 +36,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import get_settings
 from .models import (
-    Activity, Market, MarketStatus, Order, OrderAction, OrderStatus, OrderType,
-    Position, Side, Trade, User,
+    Activity, Commission, CommissionSource, Market, MarketStatus, Order, OrderAction,
+    OrderStatus, OrderType, Position, Side, Trade, User,
 )
 from .schemas import OrderIn
 
@@ -116,6 +116,27 @@ def _record_trade(db: AsyncSession, *, market_id: str, side: Side, price: float,
 
 def _record_activity(db: AsyncSession, **kw) -> None:
     db.add(Activity(**kw))
+
+
+def _charge_commission(
+    db: AsyncSession, user: User, market_id: str, gross_profit: float, source: CommissionSource,
+) -> float:
+    """Charge the house fee on a *positive* realized gain. Debits the user, writes
+    a row to the commission ledger and a user-facing COMMISSION activity. Returns
+    the amount charged (0.0 when there is no gain or the rate is off)."""
+    rate = get_settings().commission_rate
+    if gross_profit <= 0 or rate <= 0:
+        return 0.0
+    amount = gross_profit * rate
+    user.cash -= amount
+    db.add(Commission(
+        user_id=user.id, market_id=market_id, source=source,
+        gross_profit=gross_profit, rate=rate, amount=amount,
+    ))
+    _record_activity(db, user_id=user.id, market_id=market_id, kind="COMMISSION",
+                     side=None, quantity=None, price=None, total=-amount,
+                     note=f"Comisión {rate * 100:.0f}% sobre ganancia realizada {gross_profit:.2f}")
+    return amount
 
 
 def _update_market_price(market: Market, side: Side, price: float) -> None:
@@ -335,6 +356,7 @@ async def _fill_market_sell(db: AsyncSession, market: Market, user: User, order:
 
     realized = _debit_position(pos, order.quantity, fill_price)
     user.cash += proceeds
+    _charge_commission(db, user, market.id, realized, CommissionSource.CLOSE)
 
     _record_trade(db, market_id=market.id, side=order.side, price=fill_price, qty=order.quantity,
                   buyer_id=user.id, seller_id=user.id,
@@ -402,13 +424,15 @@ async def resolve_market(db: AsyncSession, market: Market, outcome: Side) -> int
     for p in pos_rs.scalars().all():
         if p.side == outcome:
             payout = 1.0 * p.shares
+            profit = (1.0 - p.avg_cost) * p.shares
             u = await db.get(User, p.user_id)
             if u:
                 u.cash += payout
+                _charge_commission(db, u, market.id, profit, CommissionSource.RESOLVE)
             _record_activity(db, user_id=p.user_id, market_id=market.id, kind="RESOLVED",
                              side=p.side, quantity=p.shares, price=1.0, total=payout,
                              note=f"Resuelto {outcome.value} — pagado")
-            p.realized_pnl += (1.0 - p.avg_cost) * p.shares
+            p.realized_pnl += profit
         else:
             _record_activity(db, user_id=p.user_id, market_id=market.id, kind="RESOLVED",
                              side=p.side, quantity=p.shares, price=0.0, total=0.0,

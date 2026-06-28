@@ -94,6 +94,9 @@ export const api = {
   reviewProposal: (id: string, b: { decision: "APPROVED" | "REJECTED"; review_note?: string }) =>
     request<Proposal>(`/admin/proposals/${id}/review`, { method: "POST", body: JSON.stringify(b) }),
   cashflow: (days = 7) => request<CashflowKpi>(`/admin/cashflow?days=${days}`),
+  setCommissionRate: (rate: number) =>
+    request<{ ok: boolean; commission_rate: number }>(`/admin/commission-rate`, { method: "PUT", body: JSON.stringify({ rate }) }),
+  listCommissions: (limit = 100) => request<CommissionRow[]>(`/admin/commissions?limit=${limit}`),
   adminUsers: (aml_only = false) => request<AdminUserRow[]>(`/admin/users?aml_only=${aml_only}`),
   setAml: (userId: string, flag: boolean, note?: string) => {
     const p = new URLSearchParams({ flag: String(flag) });
@@ -218,7 +221,10 @@ export type Activity = {
   quantity: number | null; price: number | null; total: number | null;
   note: string | null; created_at: string;
 };
-export type Portfolio = { cash: number; positions: Position[]; activity: Activity[] };
+export type Portfolio = {
+  cash: number; realized_pnl: number; commissions_paid: number;
+  positions: Position[]; activity: Activity[];
+};
 export type MarketCreateIn = {
   id: string; title: string; short_title: string; description: string;
   category: string; closes_at: string; initial_yes_price?: number;
@@ -243,11 +249,18 @@ export type Proposal = {
 export type CashflowKpi = {
   volume_24h: number; trades_24h: number; active_users_24h: number;
   open_markets: number; pending_proposals: number; unresolved_pnl_house: number;
+  commission_rate: number;
   commission_total: number; commission_period: number; commission_24h: number;
   commission_count: number;
   commission_by_market: { market_id: string | null; title: string | null; amount: number; count: number }[];
   series: { day: string; volume: number; trades: number }[];
   by_category: { category: string; volume: number; trades: number }[];
+};
+export type CommissionRow = {
+  id: string; user_id: string; handle: string;
+  market_id: string | null; market_title: string | null;
+  source: "CLOSE" | "RESOLVE";
+  gross_profit: number; rate: number; amount: number; created_at: string;
 };
 export type MarketSummary = {
   market_id: string; status: MarketStatus;

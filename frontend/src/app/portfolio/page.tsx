@@ -79,13 +79,16 @@ export default function PortfolioPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         <Kpi label="Patrimonio total"   value={usd(totals?.equity ?? user.cash)} sub="saldo + posiciones"/>
         <Kpi label="Saldo"              value={usd(user.cash)} sub="créditos virtuales"/>
         <Kpi label="Posiciones abiertas" value={(pf?.positions.length ?? 0).toString()} sub={`${(pf?.positions.reduce((s, p) => s + p.shares, 0) ?? 0).toFixed(0)} contratos`}/>
         <Kpi label="P&L no realizado"   value={`${(totals?.pnl ?? 0) >= 0 ? "+" : ""}${usd(totals?.pnl ?? 0)}`}
              accent={(totals?.pnl ?? 0) >= 0 ? "yes" : "no"}
              sub={totals && totals.cost > 0 ? `${(totals.pnl / totals.cost * 100).toFixed(1)}% sobre el costo` : "—"}/>
+        <Kpi label="P&L realizado"      value={`${(pf?.realized_pnl ?? 0) >= 0 ? "+" : ""}${usd(pf?.realized_pnl ?? 0)}`}
+             accent={(pf?.realized_pnl ?? 0) >= 0 ? "yes" : "no"} sub="neto de comisiones"/>
+        <Kpi label="Comisiones pagadas" value={usd(pf?.commissions_paid ?? 0)} sub="fee de la casa (5%)"/>
       </div>
 
       {msg && (

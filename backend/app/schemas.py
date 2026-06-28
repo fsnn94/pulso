@@ -7,7 +7,7 @@ import uuid
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from .models import (
-    AmlAlertStatus, AmlSeverity, OrderAction, OrderStatus, OrderType,
+    AmlAlertStatus, AmlSeverity, CommissionSource, OrderAction, OrderStatus, OrderType,
     ResolutionOutcome, ResolutionProposalStatus, Side, MarketStatus, ProposalStatus,
 )
 
@@ -155,6 +155,8 @@ class ActivityOut(BaseModel):
 
 class PortfolioOut(BaseModel):
     cash: float
+    realized_pnl: float       # net of commission, across all positions (incl. closed)
+    commissions_paid: float   # total house fees this user has paid
     positions: list[PositionOut]
     activity: list[ActivityOut]
 
@@ -206,6 +208,7 @@ class CashflowKpiOut(BaseModel):
     pending_proposals: int
     unresolved_pnl_house: float
     # Commission wallet (house fee ledger)
+    commission_rate: float           # current fee rate (editable at runtime)
     commission_total: float          # all-time wallet balance
     commission_period: float         # within the selected days window
     commission_24h: float
@@ -213,6 +216,23 @@ class CashflowKpiOut(BaseModel):
     commission_by_market: list[dict] # [{market_id, title, amount, count}]
     series: list[dict]
     by_category: list[dict]
+
+
+class CommissionRateIn(BaseModel):
+    rate: float = Field(ge=0.0, le=1.0)
+
+
+class CommissionRow(BaseModel):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    handle: str
+    market_id: str | None
+    market_title: str | None
+    source: CommissionSource
+    gross_profit: float
+    rate: float
+    amount: float
+    created_at: datetime
 
 
 class MarketSummaryOut(BaseModel):

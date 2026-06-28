@@ -212,6 +212,17 @@ class Activity(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
 
 
+class AppSetting(Base):
+    """Mutable runtime settings editable from the admin UI (e.g. commission rate).
+    Key/value for forward-compat; seeded lazily from config defaults."""
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[str] = mapped_column(String(255), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
 class CommissionSource(str, PyEnum):
     CLOSE   = "CLOSE"    # realized by closing a position at a profit (MARKET SELL)
     RESOLVE = "RESOLVE"  # realized by a winning position when the market resolves

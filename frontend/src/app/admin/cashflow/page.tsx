@@ -19,6 +19,8 @@ export default function AdminCashflowPage() {
   const [days, setDays] = useState(7);
   const tape = useRef<LiveTrade[]>([]);
   const [, force] = useState(0);
+  const [rateInput, setRateInput] = useState<string | null>(null); // null = mirror server value
+  const [savingRate, setSavingRate] = useState(false);
 
   const reload = () => api.cashflow(days).then(setKpi).catch(() => {});
   useEffect(() => { if (user?.is_admin) reload(); }, [user?.id, days]); // eslint-disable-line
@@ -53,6 +55,14 @@ export default function AdminCashflowPage() {
     const to = new Date();
     const from = new Date(to.getTime() - days * 86_400_000);
     window.location.href = api.auditExportUrl(from.toISOString(), to.toISOString());
+  };
+
+  const saveRate = async () => {
+    const pct = parseFloat(rateInput ?? "");
+    if (isNaN(pct) || pct < 0 || pct > 100) { setRateInput(null); return; }
+    setSavingRate(true);
+    try { await api.setCommissionRate(pct / 100); setRateInput(null); await reload(); }
+    catch {} finally { setSavingRate(false); }
   };
 
   return (
@@ -108,6 +118,22 @@ export default function AdminCashflowPage() {
           <MiniStat label={`Período (${days}d)`} value={kpi ? usd(kpi.commission_period) : "—"}/>
           <MiniStat label="Últimas 24h"          value={kpi ? usd(kpi.commission_24h) : "—"}/>
           <MiniStat label="Cobros totales"       value={kpi ? kpi.commission_count.toLocaleString() : "—"}/>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 mb-4 pb-4 border-b border-ink-100 dark:border-ink-800">
+          <label className="text-sm text-ink-600 dark:text-ink-300">Comisión sobre ganancias</label>
+          <div className="flex items-stretch rounded-lg border border-ink-200 dark:border-ink-800 overflow-hidden">
+            <input type="number" min={0} max={100} step={0.5}
+                   value={rateInput ?? (kpi ? (Math.round(kpi.commission_rate * 10000) / 100).toString() : "")}
+                   onChange={(e) => setRateInput(e.target.value)}
+                   className="w-20 px-2 py-1.5 bg-transparent num text-sm outline-none"/>
+            <span className="px-2 grid place-items-center text-ink-400 dark:text-ink-500 border-l border-ink-200 dark:border-ink-800 text-sm">%</span>
+          </div>
+          <button onClick={saveRate} disabled={savingRate}
+                  className="h-8 px-3 rounded-lg bg-ink-900 text-white dark:bg-white dark:text-ink-900 text-sm font-medium disabled:opacity-50">
+            {savingRate ? "Guardando..." : "Guardar"}
+          </button>
+          <Link href="/admin/commissions" className="ml-auto text-sm text-accent-500 hover:underline">Ver historial →</Link>
         </div>
 
         {kpi?.commission_by_market.length ? (

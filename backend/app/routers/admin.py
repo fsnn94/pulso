@@ -14,15 +14,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..db import get_db
 from ..config import get_settings
 from ..deps import require_admin
-from ..matching import resolve_market
+from ..matching import resolve_market, get_commission_rate, COMMISSION_RATE_KEY
 from ..models import (
-    Activity, AmlAlert, AmlMute, Commission, EmailVerification,
+    Activity, AmlAlert, AmlMute, AppSetting, Commission, EmailVerification,
     Market, MarketDispute, MarketProposal, MarketStatus, Order, Position,
     ProposalStatus, ResolutionProposal, Trade, User,
 )
 from ..schemas import (
-    AdminUserRow, CashflowKpiOut, MarketBase, MarketCreateIn, MarketResolveIn,
-    ProposalOut, ProposalReviewIn,
+    AdminUserRow, CashflowKpiOut, CommissionRateIn, CommissionRow, MarketBase,
+    MarketCreateIn, MarketResolveIn, ProposalOut, ProposalReviewIn,
 )
 from ..ws import broadcast_market_event
 
@@ -209,6 +209,7 @@ async def cashflow(
         open_markets=int(open_markets or 0),
         pending_proposals=int(pending or 0),
         unresolved_pnl_house=0.0,
+        commission_rate=await get_commission_rate(db),
         commission_total=float(commission_total or 0.0),
         commission_period=float(commission_period or 0.0),
         commission_24h=float(commission_24h or 0.0),
@@ -216,6 +217,44 @@ async def cashflow(
         commission_by_market=commission_by_market,
         series=series, by_category=by_category,
     )
+
+
+@router.put("/commission-rate")
+async def set_commission_rate(
+    payload: CommissionRateIn,
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    row = await db.get(AppSetting, COMMISSION_RATE_KEY)
+    if row is None:
+        db.add(AppSetting(key=COMMISSION_RATE_KEY, value=str(payload.rate), updated_by=admin.id))
+    else:
+        row.value = str(payload.rate)
+        row.updated_by = admin.id
+    await db.commit()
+    return {"ok": True, "commission_rate": payload.rate}
+
+
+@router.get("/commissions", response_model=list[CommissionRow])
+async def list_commissions(
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = Query(100, ge=1, le=500),
+):
+    rs = await db.execute(
+        select(Commission, User.handle, Market.title)
+        .join(User, User.id == Commission.user_id)
+        .outerjoin(Market, Market.id == Commission.market_id)
+        .order_by(desc(Commission.created_at)).limit(limit)
+    )
+    return [
+        CommissionRow(
+            id=c.id, user_id=c.user_id, handle=handle,
+            market_id=c.market_id, market_title=title, source=c.source,
+            gross_profit=c.gross_profit, rate=c.rate, amount=c.amount, created_at=c.created_at,
+        )
+        for c, handle, title in rs
+    ]
 
 
 # ---------- user management ----------

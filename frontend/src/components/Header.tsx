@@ -45,6 +45,7 @@ export function Header() {
           <nav className="hidden md:flex items-center gap-1 ml-2">
             <NavLink href="/">Mercados</NavLink>
             <NavLink href="/portfolio">Portafolio</NavLink>
+            <NavLink href="/noticias">Noticias</NavLink>
             <NavLink href="/como-funciona">Cómo funciona</NavLink>
             {user && <NavLink href="/markets/new">Proponer</NavLink>}
             {user?.is_admin && <NavLink href="/admin">Admin</NavLink>}

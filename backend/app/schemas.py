@@ -222,6 +222,29 @@ class EquityHistoryOut(BaseModel):
     points: list[EquityPointOut]
 
 
+# ---------- News (item #10) ----------
+class HeadlineOut(BaseModel):
+    title: str
+    source: str
+    url: str
+    image: str | None = None
+    published_at: str | None = None
+    description: str | None = None
+    category: str
+
+
+class NewsCategoryOut(BaseModel):
+    key: str        # "all" | "Economics" | ...
+    label: str      # etiqueta para la UI
+
+
+class NewsOut(BaseModel):
+    enabled: bool
+    category: str
+    categories: list[NewsCategoryOut]
+    headlines: list[HeadlineOut]
+
+
 # ---------- Proposals ----------
 class ProposalIn(BaseModel):
     slug: str = Field(pattern=r"^[a-z0-9-]{3,64}$")

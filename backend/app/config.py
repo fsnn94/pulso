@@ -40,6 +40,13 @@ class Settings(BaseSettings):
     equity_snapshot_interval_minutes: int = 15   # cada cuánto se muestrea el patrimonio
     equity_snapshot_retention_days: int = 400    # se podan snapshots más viejos que esto
 
+    # ----- News (item #10: noticias de última hora) -----
+    news_provider: str = "newsapi"               # "newsapi" (NewsAPI.org)
+    news_api_key: str = ""                        # vacío => endpoint deshabilitado (enabled:false)
+    news_lang: str = "es"
+    news_cache_ttl_seconds: int = 600            # cache en memoria para no quemar el free tier
+    news_page_size: int = 12                     # headlines por categoría
+
     # ----- Resolution -----
     resolution_loop_interval_seconds: int = 60
     resolution_auto_finalize_hours_default: int = 24

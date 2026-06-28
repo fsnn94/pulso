@@ -13,7 +13,7 @@ from .db import Base, engine, session_scope
 from .price_engine import price_engine_loop
 from .resolution_loop import resolution_loop
 from .snapshot_loop import snapshot_loop
-from .routers import admin, auth, markets, notifications, orders, portfolio, proposals, users
+from .routers import admin, auth, markets, news, notifications, orders, portfolio, proposals, users
 from .routers import aml as aml_router
 from .routers import resolutions as resolutions_router
 from .seed import seed_if_empty
@@ -94,6 +94,7 @@ def create_app() -> FastAPI:
     app.include_router(portfolio.router)
     app.include_router(proposals.router)
     app.include_router(users.router)
+    app.include_router(news.router)
     app.include_router(notifications.router)
     app.include_router(admin.router)
     app.include_router(aml_router.router)

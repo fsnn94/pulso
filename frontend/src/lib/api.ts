@@ -85,6 +85,10 @@ export const api = {
   equityHistory: (range: EquityRange = "all") =>
     request<EquityHistory>(`/portfolio/history?range=${range}`),
 
+  // news (item #10)
+  news: (category = "all") =>
+    request<News>(`/news?category=${encodeURIComponent(category)}`),
+
   // notifications (item #8)
   notifications: (unread_only = false, limit = 50) =>
     request<Notification[]>(`/notifications?unread_only=${unread_only}&limit=${limit}`),
@@ -263,6 +267,16 @@ export type EquityRange = "24h" | "1w" | "1m" | "1y" | "all";
 export type EquityPoint = { ts: string; equity: number; cash: number; pnl: number };
 export type EquityHistory = {
   range: EquityRange; starting_credits: number; points: EquityPoint[];
+};
+export type Headline = {
+  title: string; source: string; url: string;
+  image: string | null; published_at: string | null;
+  description: string | null; category: string;
+};
+export type NewsCategory = { key: string; label: string };
+export type News = {
+  enabled: boolean; category: string;
+  categories: NewsCategory[]; headlines: Headline[];
 };
 export type MarketCreateIn = {
   id: string; title: string; short_title: string; description: string;

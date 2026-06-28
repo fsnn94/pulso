@@ -6,6 +6,7 @@ import { api, Market } from "@/lib/api";
 import { useMarketSocket } from "@/lib/ws";
 import { compact } from "@/lib/format";
 import { MarketCard } from "@/components/MarketCard";
+import { TrendingCarousel } from "@/components/TrendingCarousel";
 
 const CATEGORIES: { value: string; label: string }[] = [
   { value: "All",       label: "Todos" },
@@ -91,6 +92,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <TrendingCarousel />
 
       <section id="markets" className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-4">
         <div className="flex flex-wrap items-center gap-3 justify-between">

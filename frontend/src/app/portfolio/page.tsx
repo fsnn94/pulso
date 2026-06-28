@@ -11,6 +11,8 @@ export default function PortfolioPage() {
   const [pf, setPf] = useState<Portfolio | null>(null);
   const [openOrders, setOpenOrders] = useState<Order[]>([]);
   const [marketsById, setMarketsById] = useState<Record<string, { short_title: string; current_yes_price: number; category: string }>>({});
+  const [closing, setClosing] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   const refresh = async () => {
     try {
@@ -21,6 +23,28 @@ export default function PortfolioPage() {
   };
 
   useEffect(() => { if (user) void refresh(); }, [user?.id]); // eslint-disable-line
+
+  const closePosition = async (p: { id: string; market_id: string; side: "YES" | "NO"; shares: number }) => {
+    if (!confirm(`¿Cerrar posición? Vas a vender ${p.shares.toFixed(2)} contratos ${p.side} a precio de mercado.`)) return;
+    setClosing(p.id);
+    setMsg(null);
+    try {
+      const o = await api.placeOrder({
+        market_id: p.market_id, side: p.side, action: "SELL", type: "MARKET", quantity: p.shares,
+      });
+      setMsg({
+        kind: "ok",
+        text: o.status === "FILLED"
+          ? `Cerrada: ${o.filled_quantity.toFixed(2)} contratos @ ${(((o.avg_fill_price ?? 0) * 100)).toFixed(1)}¢`
+          : `Cierre parcial: ${o.filled_quantity.toFixed(2)} / ${o.quantity.toFixed(2)}`,
+      });
+      await refresh();
+    } catch (e: any) {
+      setMsg({ kind: "err", text: e?.message ?? "Falló al cerrar la posición" });
+    } finally {
+      setClosing(null);
+    }
+  };
 
   const totals = useMemo(() => {
     if (!pf) return null;
@@ -64,11 +88,20 @@ export default function PortfolioPage() {
              sub={totals && totals.cost > 0 ? `${(totals.pnl / totals.cost * 100).toFixed(1)}% sobre el costo` : "—"}/>
       </div>
 
+      {msg && (
+        <div className={`rounded-lg px-4 py-2 mb-4 text-sm border ${msg.kind === "ok"
+          ? "border-yes-500/30 bg-yes-500/5 text-yes-700 dark:text-yes-500"
+          : "border-no-500/30 bg-no-500/5 text-no-700 dark:text-no-500"}`}>
+          {msg.text}
+          <button onClick={() => setMsg(null)} className="float-right text-xs underline">cerrar</button>
+        </div>
+      )}
+
       <Section title={`Posiciones abiertas (${pf?.positions.length ?? 0})`}>
         {!pf || pf.positions.length === 0 ? (
           <Empty body="Compra YES o NO en cualquier mercado para empezar tu portafolio simulado."/>
         ) : (
-          <Table head={["Mercado", "Lado", "Contratos", "Costo prom.", "Actual", "Valor", "P&L"]}>
+          <Table head={["Mercado", "Lado", "Contratos", "Costo prom.", "Actual", "Valor", "P&L", "Cerrar"]}>
             {pf.positions.map((p) => {
               const m = marketsById[p.market_id];
               const px = m ? (p.side === "YES" ? m.current_yes_price : 1 - m.current_yes_price) : p.avg_cost;
@@ -89,6 +122,14 @@ export default function PortfolioPage() {
                   <td className="px-3 py-3 text-right num font-medium">{usd(value)}</td>
                   <td className={`px-3 py-3 text-right num font-medium ${pnl >= 0 ? "text-yes-500" : "text-no-500"}`}>
                     {pnl >= 0 ? "+" : ""}{usd(pnl)}
+                  </td>
+                  <td className="px-5 sm:px-6 py-3 text-right">
+                    <button
+                      onClick={() => closePosition({ id: p.id, market_id: p.market_id, side: p.side, shares: p.shares })}
+                      disabled={closing === p.id}
+                      className="h-8 px-3 text-xs font-medium rounded-md bg-no-500/15 text-no-700 dark:text-no-500 hover:bg-no-500/25 disabled:opacity-50">
+                      {closing === p.id ? "Cerrando..." : "Cerrar"}
+                    </button>
                   </td>
                 </tr>
               );

@@ -208,6 +208,20 @@ class PortfolioOut(BaseModel):
     activity: list[ActivityOut]
 
 
+# ---------- Equity history (item #9) ----------
+class EquityPointOut(BaseModel):
+    ts: datetime
+    equity: float
+    cash: float
+    pnl: float                # equity - starting_credits
+
+
+class EquityHistoryOut(BaseModel):
+    range: str                # 24h | 1w | 1m | 1y | all
+    starting_credits: float   # baseline (créditos iniciales) para calcular el P&L
+    points: list[EquityPointOut]
+
+
 # ---------- Proposals ----------
 class ProposalIn(BaseModel):
     slug: str = Field(pattern=r"^[a-z0-9-]{3,64}$")

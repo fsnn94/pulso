@@ -12,6 +12,7 @@ from .config import get_settings
 from .db import Base, engine, session_scope
 from .price_engine import price_engine_loop
 from .resolution_loop import resolution_loop
+from .snapshot_loop import snapshot_loop
 from .routers import admin, auth, markets, notifications, orders, portfolio, proposals, users
 from .routers import aml as aml_router
 from .routers import resolutions as resolutions_router
@@ -59,10 +60,11 @@ async def lifespan(app: FastAPI):
     price_task = asyncio.create_task(price_engine_loop(),  name="price_engine")
     aml_task   = asyncio.create_task(aml_scan_loop(),       name="aml_scan")
     res_task   = asyncio.create_task(resolution_loop(),     name="resolution")
+    snap_task  = asyncio.create_task(snapshot_loop(),       name="equity_snapshot")
     try:
         yield
     finally:
-        for t in (price_task, aml_task, res_task):
+        for t in (price_task, aml_task, res_task, snap_task):
             t.cancel()
             try:
                 await t

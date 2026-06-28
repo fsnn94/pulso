@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     email_from: str = "noreply@pulso.local"
     email_from_name: str = "Pulso"
 
+    # ----- Equity snapshots (item #9: P&L histórico) -----
+    equity_snapshot_interval_minutes: int = 15   # cada cuánto se muestrea el patrimonio
+    equity_snapshot_retention_days: int = 400    # se podan snapshots más viejos que esto
+
     # ----- Resolution -----
     resolution_loop_interval_seconds: int = 60
     resolution_auto_finalize_hours_default: int = 24

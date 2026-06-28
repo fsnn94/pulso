@@ -2,9 +2,78 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { api, Order, Portfolio } from "@/lib/api";
+import { api, EquityHistory, EquityRange, Order, Portfolio } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { ValueChart } from "@/components/charts";
 import { timeAgo, usd } from "@/lib/format";
+
+const RANGES: { key: EquityRange; label: string }[] = [
+  { key: "24h", label: "24h" },
+  { key: "1w",  label: "1S" },
+  { key: "1m",  label: "1M" },
+  { key: "1y",  label: "1A" },
+  { key: "all", label: "Todo" },
+];
+
+function PnlChartCard() {
+  const [range, setRange] = useState<EquityRange>("all");
+  const [hist, setHist] = useState<EquityHistory | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    api.equityHistory(range)
+      .then((h) => { if (alive) { setHist(h); setLoading(false); } })
+      .catch(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [range]);
+
+  const points = hist?.points ?? [];
+  const data = points.map((p) => ({ t: p.ts, v: p.equity }));
+  const base = hist?.starting_credits ?? 10000;
+  const last = points.length ? points[points.length - 1] : null;
+  const pnl = last?.pnl ?? 0;
+  const pnlPct = base ? (pnl / base) * 100 : 0;
+  const up = pnl >= 0;
+
+  return (
+    <div className="rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 mb-8 overflow-hidden">
+      <div className="px-5 sm:px-6 py-4 border-b border-ink-100 dark:border-ink-800 flex items-end justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="font-semibold">Evolución del patrimonio</h2>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-2xl font-semibold num">{usd(last?.equity ?? base)}</span>
+            <span className={`num text-sm font-medium ${up ? "text-yes-500" : "text-no-500"}`}>
+              {up ? "+" : ""}{usd(pnl)} ({up ? "+" : ""}{pnlPct.toFixed(1)}%)
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 rounded-lg border border-ink-200 dark:border-ink-700 p-0.5">
+          {RANGES.map((r) => (
+            <button key={r.key} onClick={() => setRange(r.key)}
+              className={`h-7 px-2.5 text-xs font-medium rounded-md transition-colors ${
+                range === r.key
+                  ? "bg-ink-900 text-white dark:bg-white dark:text-ink-900"
+                  : "text-ink-500 dark:text-ink-400 hover:bg-ink-50 dark:hover:bg-ink-800"}`}>
+              {r.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="px-3 sm:px-4 py-4">
+        {loading && !hist ? (
+          <div className="h-[260px] grid place-items-center text-xs text-ink-400 dark:text-ink-500">Cargando…</div>
+        ) : (
+          <ValueChart data={data} baseline={base} baseLabel="créditos iniciales"/>
+        )}
+        <p className="text-[11px] text-ink-400 dark:text-ink-500 mt-2 px-2">
+          El histórico se registra desde la activación de esta función y se va completando con el tiempo.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function PortfolioPage() {
   const { user, loading } = useAuth();
@@ -90,6 +159,8 @@ export default function PortfolioPage() {
              accent={(pf?.realized_pnl ?? 0) >= 0 ? "yes" : "no"} sub="neto de comisiones"/>
         <Kpi label="Comisiones pagadas" value={usd(pf?.commissions_paid ?? 0)} sub="fee de la casa (5%)"/>
       </div>
+
+      <PnlChartCard/>
 
       {msg && (
         <div className={`rounded-lg px-4 py-2 mb-4 text-sm border ${msg.kind === "ok"

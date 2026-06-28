@@ -231,6 +231,29 @@ class Notification(Base):
     )
 
 
+class EquitySnapshot(Base):
+    """Punto histórico del patrimonio (equity) de un usuario para graficar el
+    P&L con timeframes (item #9). Se escribe periódicamente por `snapshot_loop`.
+
+    equity = cash + positions_value, donde cada posición abierta se valúa al
+    precio actual del mercado (YES = current_yes_price, NO = 1 - current_yes_price).
+    No reconstruimos historia pasada (no guardamos precios históricos por
+    mercado): la curva acumula hacia adelante desde que se activa la feature."""
+    __tablename__ = "equity_snapshots"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, nullable=False)
+    cash: Mapped[float] = mapped_column(Float, nullable=False)
+    positions_value: Mapped[float] = mapped_column(Float, nullable=False)
+    equity: Mapped[float] = mapped_column(Float, nullable=False)            # cash + positions_value
+    realized_pnl: Mapped[float] = mapped_column(Float, default=0.0)         # acumulado, neto de comisión
+
+    __table_args__ = (
+        Index("ix_equity_snapshots_user_ts", "user_id", "ts"),
+    )
+
+
 class AppSetting(Base):
     """Mutable runtime settings editable from the admin UI (e.g. commission rate).
     Key/value for forward-compat; seeded lazily from config defaults."""

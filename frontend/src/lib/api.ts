@@ -82,6 +82,8 @@ export const api = {
 
   // portfolio
   portfolio:  () => request<Portfolio>("/portfolio"),
+  equityHistory: (range: EquityRange = "all") =>
+    request<EquityHistory>(`/portfolio/history?range=${range}`),
 
   // notifications (item #8)
   notifications: (unread_only = false, limit = 50) =>
@@ -256,6 +258,11 @@ export type Activity = {
 export type Portfolio = {
   cash: number; realized_pnl: number; commissions_paid: number;
   positions: Position[]; activity: Activity[];
+};
+export type EquityRange = "24h" | "1w" | "1m" | "1y" | "all";
+export type EquityPoint = { ts: string; equity: number; cash: number; pnl: number };
+export type EquityHistory = {
+  range: EquityRange; starting_credits: number; points: EquityPoint[];
 };
 export type MarketCreateIn = {
   id: string; title: string; short_title: string; description: string;

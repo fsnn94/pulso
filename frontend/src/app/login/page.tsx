@@ -28,8 +28,8 @@ export default function LoginPage() {
         Ingresa a tu cuenta de operaciones simuladas.
       </p>
       <form onSubmit={submit} className="space-y-4">
-        <Field label="Email">
-          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+        <Field label="Email o usuario">
+          <input type="text" required autoCapitalize="none" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)}
                  className="w-full h-10 px-3 rounded-lg border border-ink-200 dark:border-ink-800 bg-transparent"/>
         </Field>
         <Field label="Contraseña">

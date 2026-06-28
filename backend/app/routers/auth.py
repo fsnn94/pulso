@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import get_settings
@@ -56,10 +56,13 @@ async def register(payload: RegisterIn, db: Annotated[AsyncSession, Depends(get_
 
 @router.post("/login", response_model=TokenOut)
 async def login(payload: LoginIn, db: Annotated[AsyncSession, Depends(get_db)]):
-    res = await db.execute(select(User).where(User.email == payload.email))
+    ident = payload.email.strip()
+    res = await db.execute(
+        select(User).where(or_(User.email == ident, User.handle == ident))
+    )
     user = res.scalar_one_or_none()
     if not user or not verify_password(payload.password, user.password_hash):
-        raise HTTPException(401, "Email o contraseña inválidos")
+        raise HTTPException(401, "Usuario/email o contraseña inválidos")
     if user.disabled:
         raise HTTPException(403, "La cuenta ha quedado inhabilitada")
     return TokenOut(access_token=create_access_token(user.id, is_admin=user.is_admin))

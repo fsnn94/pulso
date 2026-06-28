@@ -45,9 +45,6 @@ export default function LoginPage() {
       <p className="mt-6 text-sm text-ink-500 dark:text-ink-400">
         ¿No tienes cuenta? <Link href="/register" className="text-accent-500 hover:underline">Crear cuenta</Link>
       </p>
-      <p className="mt-2 text-xs text-ink-500 dark:text-ink-400">
-        Prueba con el admin de ejemplo: <span className="mono">admin@pulso.local / admin123</span>
-      </p>
     </div>
   );
 }

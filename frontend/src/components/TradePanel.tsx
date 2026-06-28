@@ -30,14 +30,16 @@ export function TradePanel({ market, onTraded }: { market: Market; onTraded?: ()
     if (tab === "market") {
       const dollars = Math.max(0, parseFloat(amount) || 0);
       const sh = px > 0 ? dollars / px : 0;
+      const fill = marketFill(px, sh, market.liquidity); // avg price incl. slippage — matches backend
+      const cost = fill * sh;
       return {
-        priceCents: (px * 100).toFixed(1),
+        priceCents: (fill * 100).toFixed(1),
         shares: sh.toFixed(2),
-        cost: dollars,
+        cost,
         payout: sh,
-        ret: sh - dollars,
-        retPct: px > 0 ? ((1 / px) - 1) * 100 : 0,
-        breakeven: (px * 100).toFixed(1),
+        ret: sh - cost,
+        retPct: fill > 0 ? ((1 / fill) - 1) * 100 : 0,
+        breakeven: (fill * 100).toFixed(1),
       };
     } else {
       const lp = clampPrice(parseFloat(limitPrice) || 0);
@@ -53,7 +55,7 @@ export function TradePanel({ market, onTraded }: { market: Market; onTraded?: ()
         breakeven: (lp * 100).toFixed(1),
       };
     }
-  }, [tab, amount, limitPrice, shares, px]);
+  }, [tab, amount, limitPrice, shares, px, market.liquidity]);
 
   const cantAfford = user ? summary.cost > user.cash : true;
 
@@ -149,7 +151,7 @@ export function TradePanel({ market, onTraded }: { market: Market; onTraded?: ()
           <div className="grid grid-cols-4 gap-1.5 mb-5 mt-2">
             {[10, 25, 100, "Max"].map((v) => (
               <button key={String(v)}
-                      onClick={() => setAmount(v === "Max" ? Math.floor(user.cash * 0.95).toString() : String(v))}
+                      onClick={() => setAmount(v === "Max" ? Math.floor(maxAffordable(user.cash, px, market.liquidity)).toString() : String(v))}
                       className="h-8 text-xs rounded-md bg-ink-50 dark:bg-ink-800 hover:bg-ink-100 dark:hover:bg-ink-700 font-medium">
                 {typeof v === "number" ? `$${v}` : v === "Max" ? "Máx" : v}
               </button>
@@ -206,6 +208,31 @@ export function TradePanel({ market, onTraded }: { market: Market; onTraded?: ()
 }
 
 function clampPrice(n: number) { return Math.max(0.01, Math.min(0.99, n)); }
+
+// Mirror of backend matching._slippage / _fill_market_buy so the cost shown,
+// the affordability check and the "Max" button match exactly what the server charges.
+function slippage(quantity: number, liquidity: number) {
+  if (liquidity <= 0) return Math.min(0.05, 0.001 * quantity);
+  return Math.min(0.05, (0.05 * quantity) / Math.max(liquidity, 1));
+}
+function marketFill(px: number, quantity: number, liquidity: number) {
+  return clampPrice(px + slippage(quantity, liquidity));
+}
+// Largest dollar notional whose real cost (incl. slippage) is still <= cash.
+// Cost is monotonic in the notional, so a short binary search converges exactly.
+function maxAffordable(cash: number, px: number, liquidity: number) {
+  if (px <= 0 || cash <= 0) return 0;
+  const costOf = (dollars: number) => {
+    const sh = dollars / px;
+    return marketFill(px, sh, liquidity) * sh;
+  };
+  let lo = 0, hi = cash;
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    if (costOf(mid) <= cash) lo = mid; else hi = mid;
+  }
+  return lo;
+}
 
 function SideButton({ selected, onClick, label, price, accent }:
   { selected: boolean; onClick: () => void; label: string; price: number; accent: "yes" | "no" }) {

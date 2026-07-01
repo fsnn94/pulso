@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { api, PublicProfile, PublicTrade } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { compact, timeAgo, usd, statusEs } from "@/lib/format";
+import { compact, fmtDate, timeAgo, usd, statusEs } from "@/lib/format";
 
 export default function PublicProfilePage() {
   const params = useParams<{ handle: string }>();
@@ -52,7 +52,7 @@ export default function PublicProfilePage() {
             {isMe && <span className="text-[10px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded bg-ink-100 dark:bg-ink-800 text-ink-500 dark:text-ink-400">Vos</span>}
           </h1>
           <p className="text-ink-500 dark:text-ink-400 mt-1 text-sm">
-            Miembro desde {new Date(profile.created_at).toLocaleDateString([], { year: "numeric", month: "long" })}
+            Miembro desde {fmtDate(profile.created_at)}
           </p>
         </div>
         {isMe && (

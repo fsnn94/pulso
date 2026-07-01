@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { Market } from "@/lib/api";
-import { compact, pct, statusEs } from "@/lib/format";
+import { compact, fmtDate, pct, statusEs } from "@/lib/format";
 import { isLabeledMarket, sideLabel } from "@/lib/market";
 import { ProbDial, Sparkline } from "./charts";
 
@@ -57,7 +57,7 @@ export function MarketCard({
       <div className="grid grid-cols-3 text-xs gap-2 pt-3 border-t border-ink-100 dark:border-ink-800 mt-auto">
         <Cell label="Vol 24h"   value={compact(market.volume_24h)}/>
         <Cell label="Liquidez"  value={compact(market.liquidity)}/>
-        <Cell label="Cierra"    value={new Date(market.closes_at).toLocaleDateString([], { month: "short", day: "numeric" })}/>
+        <Cell label="Cierra"    value={fmtDate(market.closes_at)}/>
       </div>
     </Link>
   );

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api, Market, MarketCreateIn } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { slugify, statusEs } from "@/lib/format";
+import { fmtDate, fmtDateTime, slugify, statusEs } from "@/lib/format";
 import { sideLabel } from "@/lib/market";
 
 const CATEGORIES: { value: string; label: string }[] = [
@@ -152,7 +152,7 @@ export default function AdminMarketsPage() {
                 <td className="px-3 py-3 text-ink-600 dark:text-ink-300">{CATEGORY_LABEL[m.category] ?? m.category}</td>
                 <td className="px-3 py-3 text-right num">{(m.current_yes_price * 100).toFixed(1)}¢</td>
                 <td className="px-3 py-3 text-xs">{statusEs(m.status)}{m.resolved_outcome ? ` (${sideLabel(m, m.resolved_outcome)})` : ""}</td>
-                <td className="px-3 py-3 text-xs text-ink-500 dark:text-ink-400 num">{new Date(m.closes_at).toLocaleDateString()}</td>
+                <td className="px-3 py-3 text-xs text-ink-500 dark:text-ink-400 num">{fmtDate(m.closes_at)}</td>
                 <td className="px-5 sm:px-6 py-3 text-right whitespace-nowrap">
                   {m.status !== "RESOLVED" && (
                     <>
@@ -186,17 +186,13 @@ function CreateMarketModal({ onClose, onCreated }: { onClose: () => void; onCrea
   const yesName = labeled && (form.yes_label ?? "").trim() ? form.yes_label!.trim() : "Sí";
   const noName  = labeled && (form.no_label ?? "").trim()  ? form.no_label!.trim()  : "No";
 
-  const id = slugify(form.id.trim() || form.title);
+  const overrideId = slugify((form.id ?? "").trim());
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setBusy(true); setErr(null);
-    if (id.length < 3) {
-      setErr("El título es muy corto para generar un identificador. Escribí un título más largo o un slug manual.");
-      setBusy(false); return;
-    }
     try {
       await api.createMarket({
-        ...form, id, yes_label: yesName, no_label: noName,
+        ...form, id: overrideId || undefined, yes_label: yesName, no_label: noName,
         closes_at: new Date(form.closes_at).toISOString(),
       });
       onCreated();
@@ -212,9 +208,11 @@ function CreateMarketModal({ onClose, onCreated }: { onClose: () => void; onCrea
           <button onClick={onClose} className="text-ink-500 hover:text-ink-900 dark:hover:text-ink-100 text-xl leading-none">×</button>
         </div>
         <form onSubmit={submit} className="space-y-3">
-          <F label="Slug ID (opcional — se genera del título)">
-            <input value={form.id} onChange={(e) => setForm({ ...form, id: e.target.value })} placeholder={id || "se-genera-del-titulo"} className={inp}/>
-            {id && <div className="text-[11px] text-ink-400 dark:text-ink-500 mt-1 mono">ID: {id}</div>}
+          <F label="Código de ID (opcional — se asigna automático)">
+            <input value={form.id ?? ""} onChange={(e) => setForm({ ...form, id: e.target.value })} placeholder="ej. mex-vs-ecu (o dejalo vacío)" className={inp}/>
+            <div className="text-[11px] text-ink-400 dark:text-ink-500 mt-1 mono">
+              {overrideId ? `ID: ${overrideId}` : "Se asignará un código automático (ej. dep-001)"}
+            </div>
           </F>
           <F label="Título"><input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={inp}/></F>
           <F label="Título corto"><input required maxLength={160} value={form.short_title} onChange={(e) => setForm({ ...form, short_title: e.target.value })} className={inp}/></F>
@@ -247,6 +245,7 @@ function CreateMarketModal({ onClose, onCreated }: { onClose: () => void; onCrea
           <F label="Cierra el">
             <input type="datetime-local" required value={form.closes_at}
                    onChange={(e) => setForm({ ...form, closes_at: e.target.value })} className={inp}/>
+            {form.closes_at && <div className="text-[11px] text-ink-400 dark:text-ink-500 mt-1 num">Cierra: {fmtDateTime(form.closes_at)}</div>}
           </F>
           {err && <div className="text-no-500 text-sm">{err}</div>}
           <div className="flex justify-end gap-2 pt-2">

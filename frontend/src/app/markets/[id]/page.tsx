@@ -11,7 +11,7 @@ import { TradePanel } from "@/components/TradePanel";
 import { MarketComments } from "@/components/MarketComments";
 import { MarketSummaryCard } from "@/components/MarketSummaryCard";
 import { Icon } from "@/components/Icon";
-import { compact, pct, timeAgo, statusEs } from "@/lib/format";
+import { compact, fmtDate, fmtDateTime, pct, timeAgo, statusEs } from "@/lib/format";
 import { isLabeledMarket, sideLabel } from "@/lib/market";
 
 export default function MarketDetailPage() {
@@ -115,14 +115,14 @@ export default function MarketDetailPage() {
             <StatBox label="Volumen 24h" value={compact(market.volume_24h)}/>
             <StatBox label="Liquidez"    value={compact(market.liquidity)}/>
             <StatBox label="Estado"      value={statusEs(market.status)}/>
-            <StatBox label="Cierra"      value={new Date(market.closes_at).toLocaleDateString([], { month: "short", day: "numeric" })}/>
+            <StatBox label="Cierra"      value={fmtDate(market.closes_at)}/>
           </div>
 
           <div className="mt-6 rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-5 sm:p-6">
             <h2 className="font-semibold mb-2">Sobre este mercado</h2>
             <p className="text-sm leading-relaxed text-ink-600 dark:text-ink-300">{market.description}</p>
             <div className="mt-4 grid sm:grid-cols-2 gap-3 text-sm">
-              <KV k="Resuelve el" v={new Date(market.closes_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}/>
+              <KV k="Resuelve el" v={fmtDateTime(market.closes_at)}/>
               <KV k="Fuente de resolución" v={market.resolution_source}/>
               <KV k="Liquidación" v="Automática al resolverse"/>
               <KV k="ID de mercado" v={market.id} mono/>
@@ -274,7 +274,7 @@ function ResolutionBanner({ market, onChange }: { market: Market; onChange?: () 
         <div className="text-xs uppercase tracking-wider font-semibold mb-0.5">Resuelto: {winner}</div>
         <div className="text-sm text-ink-600 dark:text-ink-300">
           Los tenedores de {winner} recibieron $1 por contrato.
-          {market.resolved_at && <> Liquidado el {new Date(market.resolved_at).toLocaleString()}.</>}
+          {market.resolved_at && <> Liquidado el {fmtDateTime(market.resolved_at)}.</>}
         </div>
       </div>
     );
@@ -286,7 +286,7 @@ function ResolutionBanner({ market, onChange }: { market: Market; onChange?: () 
         <div className="text-xs uppercase tracking-wider font-semibold mb-0.5">Mercado nulo</div>
         <div className="text-sm text-ink-600 dark:text-ink-300">
           Cada posición abierta fue reembolsada a su costo promedio — P&L neto cero.
-          {market.resolved_at && <> Liquidado el {new Date(market.resolved_at).toLocaleString()}.</>}
+          {market.resolved_at && <> Liquidado el {fmtDateTime(market.resolved_at)}.</>}
         </div>
       </div>
     );

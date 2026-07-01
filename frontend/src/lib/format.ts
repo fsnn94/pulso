@@ -8,6 +8,19 @@ export const compact = (n: number): string => {
   if (n >= 1e3) return `$${(n / 1e3).toFixed(1)}K`;
   return `$${n.toFixed(0)}`;
 };
+// Fechas en formato paraguayo DD/MM/YYYY (y con hora HH:mm), con cero a la izquierda.
+const _pad = (n: number) => String(n).padStart(2, "0");
+export const fmtDate = (iso: string | number | Date): string => {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  return `${_pad(d.getDate())}/${_pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+};
+export const fmtDateTime = (iso: string | number | Date): string => {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  return `${fmtDate(d)} ${_pad(d.getHours())}:${_pad(d.getMinutes())}`;
+};
+
 export const timeAgo = (iso: string | number | Date) => {
   const ts = new Date(iso).getTime();
   const s = Math.floor((Date.now() - ts) / 1000);

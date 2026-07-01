@@ -5,7 +5,7 @@ import Link from "next/link";
 import { api, Proposal } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useMarketSocket } from "@/lib/ws";
-import { timeAgo } from "@/lib/format";
+import { fmtDateTime, timeAgo } from "@/lib/format";
 
 export default function AdminProposalsPage() {
   const { user, loading } = useAuth();
@@ -74,7 +74,7 @@ export default function AdminProposalsPage() {
                 </p>
               )}
               <div className="mt-3 grid sm:grid-cols-4 gap-3 text-xs text-ink-500 dark:text-ink-400">
-                <KV k="Cierra"  v={new Date(p.closes_at).toLocaleString()}/>
+                <KV k="Cierra"  v={fmtDateTime(p.closes_at)}/>
                 <KV k="Inicial" v={`${(p.initial_yes_price * 100).toFixed(0)}¢ YES`}/>
                 <KV k="Fuente"  v={p.resolution_source}/>
                 <KV k="Autor"   v={p.submitter_id.slice(0, 8)}/>

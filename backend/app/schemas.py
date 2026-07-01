@@ -105,7 +105,8 @@ class MarketHistoryOut(BaseModel):
 
 
 class MarketCreateIn(BaseModel):
-    id: str = Field(pattern=r"^[a-z0-9-]{3,64}$")
+    # Opcional: si viene vacío, el backend asigna un código trackeable (ej. dep-001).
+    id: str | None = Field(default=None, max_length=64)
     title: str = Field(max_length=500)
     short_title: str = Field(max_length=160)
     description: str

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, MarketSummary } from "@/lib/api";
-import { compact, usd } from "@/lib/format";
+import { compact, fmtDateTime, usd } from "@/lib/format";
 
 export function MarketSummaryCard({ marketId }: { marketId: string }) {
   const [s, setS] = useState<MarketSummary | null>(null);
@@ -41,7 +41,7 @@ export function MarketSummaryCard({ marketId }: { marketId: string }) {
 
       {s.resolved_at && (
         <p className="text-xs text-ink-500 dark:text-ink-400 mt-4 pt-3 border-t border-ink-100 dark:border-ink-800">
-          Liquidado el {new Date(s.resolved_at).toLocaleString()}.
+          Liquidado el {fmtDateTime(s.resolved_at)}.
         </p>
       )}
     </div>

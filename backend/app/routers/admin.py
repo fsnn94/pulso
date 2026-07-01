@@ -2,6 +2,7 @@
 from __future__ import annotations
 import csv
 import io
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
@@ -35,16 +36,37 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 
 # ---------- markets ----------
 
+def _normalize_slug(s: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", (s or "").lower()).strip("-")[:64]
+
+
+async def _gen_market_code(db: AsyncSession, category: str) -> str:
+    """Código trackeable <prefijo>-<NNN> (ej. dep-001) a partir de la categoría."""
+    prefix = re.sub(r"[^a-z0-9]", "", (category or "").lower())[:3] or "mkt"
+    existing = set((await db.execute(
+        select(Market.id).where(Market.id.like(f"{prefix}-%"))
+    )).scalars().all())
+    n = 1
+    while f"{prefix}-{n:03d}" in existing:
+        n += 1
+    return f"{prefix}-{n:03d}"
+
+
 @router.post("/markets", response_model=MarketBase, status_code=status.HTTP_201_CREATED)
 async def create_market(
     payload: MarketCreateIn,
     admin: Annotated[User, Depends(require_markets)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    if (await db.execute(select(Market).where(Market.id == payload.id))).scalar_one_or_none():
-        raise HTTPException(409, "El identificador ya está en uso")
+    # ID: si el admin escribió uno, se normaliza; si no, se asigna un código automático.
+    override = _normalize_slug(payload.id or "")
+    if payload.id and len(override) < 3:
+        raise HTTPException(422, "El identificador debe tener al menos 3 caracteres (a-z, 0-9, guiones)")
+    market_id = override or await _gen_market_code(db, payload.category)
+    if (await db.execute(select(Market).where(Market.id == market_id))).scalar_one_or_none():
+        raise HTTPException(409, f"El identificador '{market_id}' ya está en uso")
     m = Market(
-        id=payload.id, title=payload.title, short_title=payload.short_title,
+        id=market_id, title=payload.title, short_title=payload.short_title,
         description=payload.description, category=payload.category,
         yes_label=payload.yes_label, no_label=payload.no_label,
         closes_at=payload.closes_at, current_yes_price=payload.initial_yes_price,

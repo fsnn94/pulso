@@ -349,7 +349,7 @@ export type News = {
   categories: NewsCategory[]; headlines: Headline[];
 };
 export type MarketCreateIn = {
-  id: string; title: string; short_title: string; description: string;
+  id?: string; title: string; short_title: string; description: string;
   category: string; yes_label?: string; no_label?: string;
   closes_at: string; initial_yes_price?: number;
   resolution_source?: string;

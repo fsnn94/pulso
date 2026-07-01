@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, Proposal } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { slugify, timeAgo } from "@/lib/format";
+import { fmtDateTime, slugify, timeAgo } from "@/lib/format";
 
 const CATEGORIES: { value: string; label: string }[] = [
   { value: "Economics", label: "Economía" },
@@ -161,6 +161,7 @@ export default function ProposeMarketPage() {
             <Field label="Cierra el (fecha de resolución)">
               <input type="datetime-local" required value={form.closes_at}
                      onChange={(e) => setForm({ ...form, closes_at: e.target.value })} className={inp}/>
+              {form.closes_at && <div className="text-[11px] text-ink-400 dark:text-ink-500 mt-1 num">Cierra: {fmtDateTime(form.closes_at)}</div>}
             </Field>
             <Field label="Fuente de resolución">
               <input value={form.resolution_source}

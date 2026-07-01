@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { clamp, compact, pct, usd } from "@/lib/format";
+import { clamp, compact, fmtDateTime, pct, usd } from "@/lib/format";
 
 export type Point = { t: number | string | Date; p: number };
 
@@ -110,7 +110,7 @@ export function ValueChart({
       </svg>
       {hi_pt && (
         <div className="flex justify-between items-center text-xs text-ink-500 dark:text-ink-400 -mt-1 px-2">
-          <span className="num">{new Date(hi_pt.t).toLocaleString([], { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+          <span className="num">{fmtDateTime(hi_pt.t)}</span>
           <span className="num font-medium" style={{ color: accent }}>{usd(hi_pt.v)}</span>
         </div>
       )}
@@ -195,7 +195,7 @@ export function LineChart({
       </svg>
       {hover && (
         <div className="flex justify-between items-center text-xs text-ink-500 dark:text-ink-400 -mt-1 px-2">
-          <span className="num">{new Date(data[hover.i].t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+          <span className="num">{fmtDateTime(data[hover.i].t)}</span>
           <span className="num font-medium" style={{ color: trendColor }}>{pct(data[hover.i].p, 1)}</span>
         </div>
       )}

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { api, AmlAlert, AmlAlertStatus, AmlMute, AmlSeverity, AmlSummary } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useMarketSocket } from "@/lib/ws";
-import { timeAgo } from "@/lib/format";
+import { fmtDateTime, timeAgo } from "@/lib/format";
 
 const RULE_LABELS: Record<string, string> = {
   WASH_TRADE:       "Operación ficticia — ambos lados del mismo mercado",
@@ -190,7 +190,7 @@ export default function AdminAmlPage() {
                   </div>
                   <div className="text-sm mt-1 italic">"{m.reason}"</div>
                   <div className="text-[11px] text-ink-500 dark:text-ink-400 mt-1">
-                    Activado {timeAgo(m.created_at)} · vence {m.expires_at ? new Date(m.expires_at).toLocaleString() : "al revocarse"}
+                    Activado {timeAgo(m.created_at)} · vence {m.expires_at ? fmtDateTime(m.expires_at) : "al revocarse"}
                   </div>
                 </div>
                 <button onClick={() => revokeMute(m.id)}

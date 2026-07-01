@@ -18,6 +18,16 @@ export const timeAgo = (iso: string | number | Date) => {
 };
 export const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 
+// Normaliza un texto a un slug válido para IDs de mercado: minúsculas, sin
+// acentos, solo [a-z0-9-], sin guiones al borde, hasta 64 chars.
+export const slugify = (s: string): string =>
+  (s || "")
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
+
 // Spanish labels for Market lifecycle status
 const MARKET_STATUS_ES: Record<string, string> = {
   OPEN: "Abierto",

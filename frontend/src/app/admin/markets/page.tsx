@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api, Market, MarketCreateIn } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { statusEs } from "@/lib/format";
+import { slugify, statusEs } from "@/lib/format";
 import { sideLabel } from "@/lib/market";
 
 const CATEGORIES: { value: string; label: string }[] = [
@@ -186,11 +186,17 @@ function CreateMarketModal({ onClose, onCreated }: { onClose: () => void; onCrea
   const yesName = labeled && (form.yes_label ?? "").trim() ? form.yes_label!.trim() : "Sí";
   const noName  = labeled && (form.no_label ?? "").trim()  ? form.no_label!.trim()  : "No";
 
+  const id = slugify(form.id.trim() || form.title);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setBusy(true); setErr(null);
+    if (id.length < 3) {
+      setErr("El título es muy corto para generar un identificador. Escribí un título más largo o un slug manual.");
+      setBusy(false); return;
+    }
     try {
       await api.createMarket({
-        ...form, yes_label: yesName, no_label: noName,
+        ...form, id, yes_label: yesName, no_label: noName,
         closes_at: new Date(form.closes_at).toISOString(),
       });
       onCreated();
@@ -206,7 +212,10 @@ function CreateMarketModal({ onClose, onCreated }: { onClose: () => void; onCrea
           <button onClick={onClose} className="text-ink-500 hover:text-ink-900 dark:hover:text-ink-100 text-xl leading-none">×</button>
         </div>
         <form onSubmit={submit} className="space-y-3">
-          <F label="Slug ID (a-z, 0-9, guiones)"><input required pattern="[a-z0-9-]{3,64}" value={form.id} onChange={(e) => setForm({ ...form, id: e.target.value })} className={inp}/></F>
+          <F label="Slug ID (opcional — se genera del título)">
+            <input value={form.id} onChange={(e) => setForm({ ...form, id: e.target.value })} placeholder={id || "se-genera-del-titulo"} className={inp}/>
+            {id && <div className="text-[11px] text-ink-400 dark:text-ink-500 mt-1 mono">ID: {id}</div>}
+          </F>
           <F label="Título"><input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={inp}/></F>
           <F label="Título corto"><input required maxLength={160} value={form.short_title} onChange={(e) => setForm({ ...form, short_title: e.target.value })} className={inp}/></F>
           <F label="Descripción / reglas de resolución"><textarea required rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={`${inp} resize-y`}/></F>

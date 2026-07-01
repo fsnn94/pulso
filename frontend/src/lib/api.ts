@@ -27,8 +27,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!res.ok) {
     let detail: any;
     try { detail = await res.json(); } catch { detail = { detail: res.statusText }; }
-    const msg = detail?.detail || `HTTP ${res.status}`;
-    throw new ApiError(msg, res.status, detail);
+    throw new ApiError(errorMessage(detail, res.status), res.status, detail);
   }
   if (res.status === 204) return undefined as unknown as T;
   return res.json() as Promise<T>;
@@ -39,6 +38,25 @@ export class ApiError extends Error {
     super(message);
     this.name = "ApiError";
   }
+}
+
+/** Convierte el cuerpo de error del backend en un mensaje legible.
+ *  FastAPI devuelve validaciones (422) como array de {loc,msg,type}; sin esto
+ *  el frontend mostraba "[object Object]". */
+function errorMessage(detail: any, status: number): string {
+  const d = detail?.detail;
+  if (typeof d === "string") return d;
+  if (Array.isArray(d)) {
+    const parts = d.map((e: any) => {
+      const loc = Array.isArray(e?.loc) ? e.loc.filter((x: any) => x !== "body").pop() : undefined;
+      const msg = e?.msg ?? "valor inválido";
+      return loc ? `${loc}: ${msg}` : msg;
+    });
+    return parts.join(" · ") || `HTTP ${status}`;
+  }
+  if (d && typeof d === "object" && typeof d.msg === "string") return d.msg;
+  if (typeof detail?.message === "string") return detail.message;
+  return `HTTP ${status}`;
 }
 
 export const api = {

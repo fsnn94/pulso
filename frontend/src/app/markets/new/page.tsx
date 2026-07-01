@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, Proposal } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { timeAgo } from "@/lib/format";
+import { slugify, timeAgo } from "@/lib/format";
 
 const CATEGORIES: { value: string; label: string }[] = [
   { value: "Economics", label: "Economía" },
@@ -58,7 +58,11 @@ export default function ProposeMarketPage() {
     e.preventDefault();
     setBusy(true); setMsg(null);
     try {
-      const slug = (form.slug || form.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60)).replace(/^-|-$/g, "");
+      const slug = slugify(form.slug || form.title);
+      if (slug.length < 3) {
+        setMsg({ kind: "err", text: "El título es muy corto para generar un identificador." });
+        setBusy(false); return;
+      }
       const created = await api.submitProposal({
         slug,
         title: form.title, short_title: form.short_title, description: form.description,

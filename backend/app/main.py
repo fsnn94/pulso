@@ -15,7 +15,7 @@ from .snapshot_loop import snapshot_loop
 from .routers import admin, auth, markets, news, notifications, orders, portfolio, proposals, users
 from .routers import aml as aml_router
 from .routers import resolutions as resolutions_router
-from .seed import ensure_superadmin, seed_if_empty
+from .seed import ensure_superadmin, purge_demo_data, seed_if_empty
 from .ws import router as ws_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -55,6 +55,10 @@ async def lifespan(app: FastAPI):
     if s.seed_on_startup:
         async with session_scope() as db:
             await seed_if_empty(db)
+
+    # Limpieza única de datos demo (gateada por PURGE_DEMO_DATA), antes del resto.
+    async with session_scope() as db:
+        await purge_demo_data(db)
 
     # Marca al admin principal (superadmin) si SUPERADMIN_EMAIL está configurado.
     async with session_scope() as db:

@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     # Datos demo (usuarios/mercados/posiciones de ejemplo). Off por defecto: la
     # plataforma arranca limpia y los mercados se crean desde el panel de admin.
     seed_demo_data: bool = False
+    # Limpieza ÚNICA de datos demo ya existentes en la base (ver seed.purge_demo_data).
+    # Se corre una sola vez (marcador en app_settings). Setealo en true para el deploy
+    # de limpieza y luego podés dejarlo o volverlo a false.
+    purge_demo_data: bool = False
     # Al arrancar, esta cuenta (por email) se marca como admin principal (superadmin).
     # Prod-friendly: se setea en la env var SUPERADMIN_EMAIL y toma efecto en el próximo deploy.
     superadmin_email: str = ""

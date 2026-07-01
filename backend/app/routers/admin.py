@@ -27,7 +27,7 @@ from ..models import (
 )
 from ..schemas import (
     AdminPermsIn, AdminUserRow, CashflowKpiOut, CommissionRateIn, CommissionRow,
-    MarketBase, MarketCreateIn, MarketResolveIn, ProposalOut, ProposalReviewIn,
+    MarketBase, MarketCreateIn, MarketEditIn, MarketResolveIn, ProposalOut, ProposalReviewIn,
 )
 from ..ws import broadcast_market_event
 
@@ -38,6 +38,20 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 
 def _normalize_slug(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", (s or "").lower()).strip("-")[:64]
+
+
+def _clean_resolution_config(cfg: dict | None) -> dict | None:
+    """Valida y normaliza la config de resolución. manual → None."""
+    if not cfg:
+        return None
+    rtype = cfg.get("type")
+    if rtype not in ("manual", "llm_search", "json_api"):
+        raise HTTPException(422, "Tipo de resolver inválido")
+    if rtype == "manual":
+        return None
+    if rtype == "json_api" and not cfg.get("url"):
+        raise HTTPException(422, "El resolver por API de datos requiere una URL")
+    return cfg
 
 
 async def _gen_market_code(db: AsyncSession, category: str) -> str:
@@ -66,15 +80,7 @@ async def create_market(
     if (await db.execute(select(Market).where(Market.id == market_id))).scalar_one_or_none():
         raise HTTPException(409, f"El identificador '{market_id}' ya está en uso")
 
-    cfg = payload.resolution_config or None
-    if cfg:
-        rtype = cfg.get("type")
-        if rtype not in ("manual", "llm_search", "json_api"):
-            raise HTTPException(422, "Tipo de resolver inválido")
-        if rtype == "manual":
-            cfg = None  # manual = sin config
-        elif rtype == "json_api" and not cfg.get("url"):
-            raise HTTPException(422, "El resolver por API de datos requiere una URL")
+    cfg = _clean_resolution_config(payload.resolution_config)
 
     m = Market(
         id=market_id, title=payload.title, short_title=payload.short_title,
@@ -86,6 +92,36 @@ async def create_market(
     )
     db.add(m); await db.commit(); await db.refresh(m)
     await broadcast_market_event(m.id, {"type": "created", "market_id": m.id})
+    return m
+
+
+@router.patch("/markets/{market_id}", response_model=MarketBase)
+async def edit_market(
+    market_id: str,
+    payload: MarketEditIn,
+    admin: Annotated[User, Depends(require_markets)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Editar un mercado: fecha/hora de cierre, resolver y fuente. No se permite
+    en mercados ya finalizados (RESUELTO/NULO)."""
+    m = (await db.execute(select(Market).where(Market.id == market_id))).scalar_one_or_none()
+    if not m:
+        raise HTTPException(404, "Mercado no encontrado")
+    if m.status in (MarketStatus.RESOLVED, MarketStatus.VOIDED):
+        raise HTTPException(409, "No se puede editar un mercado ya finalizado")
+    if payload.closes_at is not None:
+        m.closes_at = payload.closes_at
+        # Si estaba CLOSED y se corre el cierre al futuro, reabrí la operatoria.
+        now = datetime.now(timezone.utc)
+        if m.status == MarketStatus.CLOSED and payload.closes_at > now:
+            m.status = MarketStatus.OPEN
+            m.closed_at = None
+    if payload.resolution_config is not None:
+        m.resolution_config = _clean_resolution_config(payload.resolution_config)
+    if payload.resolution_source is not None:
+        m.resolution_source = payload.resolution_source
+    await db.commit(); await db.refresh(m)
+    await broadcast_market_event(m.id, {"type": "updated", "market_id": m.id})
     return m
 
 
@@ -152,8 +188,9 @@ async def review_proposal(
     market = Market(
         id=p.slug, title=p.title, short_title=p.short_title, description=p.description,
         category=p.category, yes_label=p.yes_label, no_label=p.no_label,
-        closes_at=p.closes_at, current_yes_price=p.initial_yes_price,
+        closes_at=payload.closes_at or p.closes_at, current_yes_price=p.initial_yes_price,
         resolution_source=p.resolution_source, created_by=p.submitter_id,
+        resolution_config=_clean_resolution_config(payload.resolution_config),
         status=MarketStatus.OPEN,
     )
     db.add(market)

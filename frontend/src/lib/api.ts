@@ -140,11 +140,13 @@ export const api = {
   // admin
   createMarket: (b: MarketCreateIn) =>
     request<Market>("/admin/markets", { method: "POST", body: JSON.stringify(b) }),
+  editMarket: (id: string, b: { closes_at?: string; resolution_config?: Record<string, any> | null; resolution_source?: string }) =>
+    request<Market>(`/admin/markets/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(b) }),
   resolveMarket: (id: string, outcome: "YES" | "NO") =>
     request<Market>(`/admin/markets/${id}/resolve`, { method: "POST", body: JSON.stringify({ outcome }) }),
   listProposals: (status?: "PENDING" | "APPROVED" | "REJECTED") =>
     request<Proposal[]>(`/admin/proposals${status ? `?status=${status}` : ""}`),
-  reviewProposal: (id: string, b: { decision: "APPROVED" | "REJECTED"; review_note?: string }) =>
+  reviewProposal: (id: string, b: { decision: "APPROVED" | "REJECTED"; review_note?: string; resolution_config?: Record<string, any> | null; closes_at?: string }) =>
     request<Proposal>(`/admin/proposals/${id}/review`, { method: "POST", body: JSON.stringify(b) }),
   cashflow: (days = 7) => request<CashflowKpi>(`/admin/cashflow?days=${days}`),
   setCommissionRate: (rate: number) =>

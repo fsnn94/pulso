@@ -6,6 +6,7 @@ import { api, Market, MarketCreateIn } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { fmtDate, fmtDateTime, slugify, statusEs } from "@/lib/format";
 import { sideLabel } from "@/lib/market";
+import { ResolverFields } from "@/components/ResolverFields";
 
 const CATEGORIES: { value: string; label: string }[] = [
   { value: "Economics", label: "Economía" },
@@ -33,6 +34,7 @@ export default function AdminMarketsPage() {
   const [sort, setSort] = useState<Sort>("close_asc");
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Market | null>(null);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   const refresh = async () => {
@@ -154,6 +156,9 @@ export default function AdminMarketsPage() {
                 <td className="px-3 py-3 text-xs">{statusEs(m.status)}{m.resolved_outcome ? ` (${sideLabel(m, m.resolved_outcome)})` : ""}</td>
                 <td className="px-3 py-3 text-xs text-ink-500 dark:text-ink-400 num">{fmtDate(m.closes_at)}</td>
                 <td className="px-5 sm:px-6 py-3 text-right whitespace-nowrap">
+                  {m.status !== "RESOLVED" && m.status !== "VOIDED" && (
+                    <button onClick={() => setEditing(m)} className="h-8 px-2.5 text-xs rounded-md border border-ink-200 dark:border-ink-700 hover:bg-ink-50 dark:hover:bg-ink-800 font-medium mr-2">Editar</button>
+                  )}
                   {m.status !== "RESOLVED" && (
                     <>
                       <button onClick={() => resolve(m.id, "YES")} className="h-8 px-2.5 text-xs rounded-md bg-yes-500/15 text-yes-500 hover:bg-yes-500/25 font-medium mr-2">Resolver {sideLabel(m, "YES")}</button>
@@ -168,6 +173,7 @@ export default function AdminMarketsPage() {
       </div>
 
       {open && <CreateMarketModal onClose={() => setOpen(false)} onCreated={async () => { setOpen(false); await refresh(); }} />}
+      {editing && <EditMarketModal market={editing} onClose={() => setEditing(null)} onSaved={async () => { setEditing(null); await refresh(); }} />}
     </div>
   );
 }
@@ -180,34 +186,9 @@ function CreateMarketModal({ onClose, onCreated }: { onClose: () => void; onCrea
     yes_label: "Sí", no_label: "No",
   });
   const [marketType, setMarketType] = useState<"yesno" | "labeled">("yesno");
-  const [resolver, setResolver] = useState<"manual" | "llm_search" | "json_api">("llm_search");
-  const [llmSources, setLlmSources] = useState("");
-  const [llmExtras, setLlmExtras] = useState("");
-  const [api_url, setApiUrl] = useState("");
-  const [api_path, setApiPath] = useState("$");
-  const [api_comp, setApiComp] = useState(">=");
-  const [api_threshold, setApiThreshold] = useState("");
-  const [api_hours, setApiHours] = useState("24");
+  const [resolutionCfg, setResolutionCfg] = useState<Record<string, any> | null>({ type: "llm_search" });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-
-  const buildResolutionConfig = (): Record<string, any> | null => {
-    if (resolver === "llm_search") {
-      const cfg: Record<string, any> = { type: "llm_search" };
-      const src = llmSources.split(",").map((s) => s.trim()).filter(Boolean);
-      if (src.length) cfg.primary_sources = src;
-      if (llmExtras.trim()) cfg.prompt_extras = llmExtras.trim();
-      return cfg;
-    }
-    if (resolver === "json_api") {
-      return {
-        type: "json_api", url: api_url.trim(), jsonpath: api_path.trim() || "$",
-        comparator: api_comp, threshold: parseFloat(api_threshold),
-        auto_finalize_hours: parseInt(api_hours, 10) || 24,
-      };
-    }
-    return null; // manual
-  };
   const labeled = marketType === "labeled";
   const yesName = labeled && (form.yes_label ?? "").trim() ? form.yes_label!.trim() : "Sí";
   const noName  = labeled && (form.no_label ?? "").trim()  ? form.no_label!.trim()  : "No";
@@ -216,13 +197,13 @@ function CreateMarketModal({ onClose, onCreated }: { onClose: () => void; onCrea
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setBusy(true); setErr(null);
-    if (resolver === "json_api" && !api_url.trim()) {
+    if (resolutionCfg?.type === "json_api" && !resolutionCfg.url) {
       setErr("El resolver por API de datos requiere una URL."); setBusy(false); return;
     }
     try {
       await api.createMarket({
         ...form, id: overrideId || undefined, yes_label: yesName, no_label: noName,
-        resolution_config: buildResolutionConfig(),
+        resolution_config: resolutionCfg,
         closes_at: new Date(form.closes_at).toISOString(),
       });
       onCreated();
@@ -279,53 +260,68 @@ function CreateMarketModal({ onClose, onCreated }: { onClose: () => void; onCrea
           </F>
 
           <F label="Resolución (cómo se decide el resultado al cerrar)">
-            <div className="grid grid-cols-3 gap-2">
-              {([["manual", "Manual"], ["llm_search", "Asistida IA"], ["json_api", "API de datos"]] as const).map(([v, l]) => (
-                <button key={v} type="button" onClick={() => setResolver(v)}
-                  className={`h-9 rounded-lg border text-xs font-medium ${resolver === v ? "border-accent-500 bg-accent-500/10 text-accent-500" : "border-ink-200 dark:border-ink-800"}`}>{l}</button>
-              ))}
-            </div>
+            <ResolverFields defaultType="llm_search" onChange={setResolutionCfg} />
           </F>
-          {resolver === "manual" && (
-            <p className="text-[11px] text-ink-400 dark:text-ink-500 -mt-1">Vos resolvés a mano en la cola de resoluciones al cerrar.</p>
-          )}
-          {resolver === "llm_search" && (
-            <>
-              <p className="text-[11px] text-ink-400 dark:text-ink-500 -mt-1">Al cerrar, la IA <strong>busca el resultado en la web</strong> y lo propone con fuentes; confirmás en la cola. Requiere <span className="mono">LLM_RESOLVER_API_KEY</span> en Render; si no, cae a la cola manual.</p>
-              <F label="Fuentes primarias (URLs separadas por coma) — opcional">
-                <input value={llmSources} onChange={(e) => setLlmSources(e.target.value)} className={inp} placeholder="conmebol.com, ..."/>
-              </F>
-              <F label="Guía extra para la IA — opcional">
-                <textarea rows={2} value={llmExtras} onChange={(e) => setLlmExtras(e.target.value)} className={`${inp} resize-y`} placeholder="Ej. usar el resultado oficial de CONMEBOL."/>
-              </F>
-            </>
-          )}
-          {resolver === "json_api" && (
-            <>
-              <p className="text-[11px] text-ink-400 dark:text-ink-500 -mt-1">Consulta una URL JSON y compara un valor contra un umbral. Se auto-finaliza a las N horas si nadie disputa.</p>
-              <F label="URL de datos (JSON)">
-                <input value={api_url} onChange={(e) => setApiUrl(e.target.value)} className={inp} placeholder="https://api.ejemplo.com/..."/>
-              </F>
-              <div className="grid grid-cols-2 gap-3">
-                <F label="Campo (JSONPath)"><input value={api_path} onChange={(e) => setApiPath(e.target.value)} className={inp} placeholder="$.price"/></F>
-                <F label="Comparador">
-                  <select value={api_comp} onChange={(e) => setApiComp(e.target.value)} className={inp}>
-                    {[">=", "<=", ">", "<", "==", "!="].map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                </F>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <F label="Umbral"><input type="number" value={api_threshold} onChange={(e) => setApiThreshold(e.target.value)} className={inp}/></F>
-                <F label="Auto-finaliza (horas)"><input type="number" min="1" value={api_hours} onChange={(e) => setApiHours(e.target.value)} className={inp}/></F>
-              </div>
-              <p className="text-[11px] text-ink-400 dark:text-ink-500 -mt-1 mono">Resuelve SÍ si {api_path || "$"} {api_comp} umbral; NO si no.</p>
-            </>
-          )}
           {err && <div className="text-no-500 text-sm">{err}</div>}
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={onClose} className="h-10 px-4 rounded-lg border border-ink-200 dark:border-ink-700 text-sm">Cancelar</button>
             <button disabled={busy} type="submit" className="h-10 px-4 rounded-lg bg-ink-900 text-white dark:bg-white dark:text-ink-900 text-sm font-medium disabled:opacity-50">
               {busy ? "Creando..." : "Crear mercado"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function EditMarketModal({ market, onClose, onSaved }: { market: Market; onClose: () => void; onSaved: () => void }) {
+  const [closesAt, setClosesAt] = useState(toLocalInput(market.closes_at));
+  const [resolutionCfg, setResolutionCfg] = useState<Record<string, any> | null>(market.resolution_config ?? null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (resolutionCfg?.type === "json_api" && !resolutionCfg.url) { setErr("El resolver por API de datos requiere una URL."); return; }
+    setBusy(true); setErr(null);
+    try {
+      await api.editMarket(market.id, {
+        closes_at: new Date(closesAt).toISOString(),
+        resolution_config: resolutionCfg,
+      });
+      onSaved();
+    } catch (e: any) { setErr(e?.message ?? "Falló la edición"); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 grid place-items-center p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-ink-900 rounded-xl shadow-xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-lg font-semibold">Editar mercado</h2>
+          <button onClick={onClose} className="text-ink-500 hover:text-ink-900 dark:hover:text-ink-100 text-xl leading-none">×</button>
+        </div>
+        <p className="text-xs text-ink-500 dark:text-ink-400 mb-4 line-clamp-1">{market.short_title} · <span className="mono">{market.id}</span></p>
+        <form onSubmit={save} className="space-y-3">
+          <F label="Cierra el">
+            <input type="datetime-local" required value={closesAt} onChange={(e) => setClosesAt(e.target.value)} className={inp}/>
+            {closesAt && <div className="text-[11px] text-ink-400 dark:text-ink-500 mt-1 num">Cierra: {fmtDateTime(closesAt)}</div>}
+          </F>
+          <F label="Resolución">
+            <ResolverFields initial={market.resolution_config ?? { type: "manual" }} onChange={setResolutionCfg}/>
+          </F>
+          {err && <div className="text-no-500 text-sm">{err}</div>}
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={onClose} className="h-10 px-4 rounded-lg border border-ink-200 dark:border-ink-700 text-sm">Cancelar</button>
+            <button disabled={busy} type="submit" className="h-10 px-4 rounded-lg bg-ink-900 text-white dark:bg-white dark:text-ink-900 text-sm font-medium disabled:opacity-50">
+              {busy ? "Guardando..." : "Guardar cambios"}
             </button>
           </div>
         </form>

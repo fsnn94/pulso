@@ -311,6 +311,15 @@ class ProposalIn(BaseModel):
 class ProposalReviewIn(BaseModel):
     decision: Literal["APPROVED", "REJECTED"]
     review_note: str | None = None
+    # Al aprobar, el admin decide cómo se resuelve y puede ajustar el cierre.
+    resolution_config: dict | None = None
+    closes_at: datetime | None = None
+
+
+class MarketEditIn(BaseModel):
+    closes_at: datetime | None = None
+    resolution_config: dict | None = None
+    resolution_source: str | None = Field(default=None, max_length=255)
 
 
 class ProposalOut(BaseModel):

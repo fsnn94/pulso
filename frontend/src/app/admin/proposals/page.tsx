@@ -6,6 +6,13 @@ import { api, Proposal } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useMarketSocket } from "@/lib/ws";
 import { fmtDateTime, timeAgo } from "@/lib/format";
+import { ResolverFields } from "@/components/ResolverFields";
+
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
 
 export default function AdminProposalsPage() {
   const { user, loading } = useAuth();
@@ -14,6 +21,9 @@ export default function AdminProposalsPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [pickFor, setPickFor] = useState<Proposal | null>(null);
   const [note, setNote] = useState("");
+  const [approveFor, setApproveFor] = useState<Proposal | null>(null);
+  const [approveCfg, setApproveCfg] = useState<Record<string, any> | null>({ type: "llm_search" });
+  const [approveClosesAt, setApproveClosesAt] = useState("");
 
   const reload = () => api.listProposals(tab).then(setItems).catch(() => {});
 
@@ -23,10 +33,18 @@ export default function AdminProposalsPage() {
   if (loading) return <div className="p-12 text-center text-sm text-ink-500">Cargando...</div>;
   if (!user?.is_admin) return <div className="p-12 text-center text-sm text-ink-500">Solo para admins.</div>;
 
-  const decide = async (id: string, decision: "APPROVED" | "REJECTED", reviewNote?: string) => {
+  const decide = async (
+    id: string, decision: "APPROVED" | "REJECTED",
+    opts: { review_note?: string; resolution_config?: Record<string, any> | null; closes_at?: string } = {},
+  ) => {
+    if (opts.resolution_config?.type === "json_api" && !opts.resolution_config.url) {
+      alert("El resolver por API de datos requiere una URL."); return;
+    }
     setBusy(id);
-    try { await api.reviewProposal(id, { decision, review_note: reviewNote }); reload(); setPickFor(null); setNote(""); }
-    catch (e: any) { alert(e?.message ?? "Falló"); }
+    try {
+      await api.reviewProposal(id, { decision, ...opts });
+      reload(); setPickFor(null); setNote(""); setApproveFor(null);
+    } catch (e: any) { alert(e?.message ?? "Falló"); }
     finally { setBusy(null); }
   };
 
@@ -81,9 +99,10 @@ export default function AdminProposalsPage() {
               </div>
               {p.status === "PENDING" ? (
                 <div className="mt-4 flex flex-wrap gap-2 pt-3 border-t border-ink-100 dark:border-ink-800">
-                  <button disabled={busy === p.id} onClick={() => decide(p.id, "APPROVED")}
+                  <button disabled={busy === p.id}
+                          onClick={() => { setApproveFor(p); setApproveClosesAt(toLocalInput(p.closes_at)); setApproveCfg({ type: "llm_search" }); }}
                           className="h-9 px-4 rounded-lg bg-yes-500 hover:bg-yes-600 text-white text-sm font-medium disabled:opacity-50">
-                    Aprobar y publicar
+                    Aprobar...
                   </button>
                   <button disabled={busy === p.id} onClick={() => setPickFor(p)}
                           className="h-9 px-4 rounded-lg bg-no-500/10 hover:bg-no-500/20 text-no-500 text-sm font-medium disabled:opacity-50">
@@ -111,8 +130,40 @@ export default function AdminProposalsPage() {
                       className="w-full px-3 py-2 rounded-lg border border-ink-200 dark:border-ink-800 bg-transparent text-sm"/>
             <div className="flex justify-end gap-2 mt-3">
               <button onClick={() => setPickFor(null)} className="h-9 px-3 rounded-lg border border-ink-200 dark:border-ink-700 text-sm">Cancelar</button>
-              <button onClick={() => decide(pickFor.id, "REJECTED", note || undefined)}
+              <button onClick={() => decide(pickFor.id, "REJECTED", { review_note: note || undefined })}
                       className="h-9 px-3 rounded-lg bg-no-500 text-white text-sm font-medium">Rechazar propuesta</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {approveFor && (
+        <div className="fixed inset-0 z-50 bg-black/50 grid place-items-center p-4" onClick={() => setApproveFor(null)}>
+          <div className="bg-white dark:bg-ink-900 rounded-xl p-5 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold mb-1">Aprobar y publicar</h3>
+            <p className="text-xs text-ink-500 dark:text-ink-400 mb-4 line-clamp-1">{approveFor.title}</p>
+            <div className="space-y-3">
+              <label className="block">
+                <span className="block text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">Cierra el (podés ajustarlo)</span>
+                <input type="datetime-local" value={approveClosesAt} onChange={(e) => setApproveClosesAt(e.target.value)}
+                       className="w-full h-10 px-3 rounded-lg border border-ink-200 dark:border-ink-800 bg-transparent text-sm"/>
+                {approveClosesAt && <div className="text-[11px] text-ink-400 dark:text-ink-500 mt-1 num">Cierra: {fmtDateTime(approveClosesAt)}</div>}
+              </label>
+              <div>
+                <span className="block text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">Resolución (cómo se decide el resultado)</span>
+                <ResolverFields defaultType="llm_search" onChange={setApproveCfg}/>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setApproveFor(null)} className="h-9 px-3 rounded-lg border border-ink-200 dark:border-ink-700 text-sm">Cancelar</button>
+              <button disabled={busy === approveFor.id}
+                      onClick={() => decide(approveFor.id, "APPROVED", {
+                        resolution_config: approveCfg,
+                        closes_at: approveClosesAt ? new Date(approveClosesAt).toISOString() : undefined,
+                      })}
+                      className="h-9 px-4 rounded-lg bg-yes-500 hover:bg-yes-600 text-white text-sm font-medium disabled:opacity-50">
+                {busy === approveFor.id ? "Publicando..." : "Aprobar y publicar"}
+              </button>
             </div>
           </div>
         </div>

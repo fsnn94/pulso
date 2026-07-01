@@ -65,13 +65,24 @@ async def create_market(
     market_id = override or await _gen_market_code(db, payload.category)
     if (await db.execute(select(Market).where(Market.id == market_id))).scalar_one_or_none():
         raise HTTPException(409, f"El identificador '{market_id}' ya está en uso")
+
+    cfg = payload.resolution_config or None
+    if cfg:
+        rtype = cfg.get("type")
+        if rtype not in ("manual", "llm_search", "json_api"):
+            raise HTTPException(422, "Tipo de resolver inválido")
+        if rtype == "manual":
+            cfg = None  # manual = sin config
+        elif rtype == "json_api" and not cfg.get("url"):
+            raise HTTPException(422, "El resolver por API de datos requiere una URL")
+
     m = Market(
         id=market_id, title=payload.title, short_title=payload.short_title,
         description=payload.description, category=payload.category,
         yes_label=payload.yes_label, no_label=payload.no_label,
         closes_at=payload.closes_at, current_yes_price=payload.initial_yes_price,
-        resolution_source=payload.resolution_source, created_by=admin.id,
-        status=MarketStatus.OPEN,
+        resolution_source=payload.resolution_source, resolution_config=cfg,
+        created_by=admin.id, status=MarketStatus.OPEN,
     )
     db.add(m); await db.commit(); await db.refresh(m)
     await broadcast_market_event(m.id, {"type": "created", "market_id": m.id})

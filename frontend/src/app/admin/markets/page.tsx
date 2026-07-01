@@ -180,8 +180,34 @@ function CreateMarketModal({ onClose, onCreated }: { onClose: () => void; onCrea
     yes_label: "Sí", no_label: "No",
   });
   const [marketType, setMarketType] = useState<"yesno" | "labeled">("yesno");
+  const [resolver, setResolver] = useState<"manual" | "llm_search" | "json_api">("manual");
+  const [llmSources, setLlmSources] = useState("");
+  const [llmExtras, setLlmExtras] = useState("");
+  const [api_url, setApiUrl] = useState("");
+  const [api_path, setApiPath] = useState("$");
+  const [api_comp, setApiComp] = useState(">=");
+  const [api_threshold, setApiThreshold] = useState("");
+  const [api_hours, setApiHours] = useState("24");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  const buildResolutionConfig = (): Record<string, any> | null => {
+    if (resolver === "llm_search") {
+      const cfg: Record<string, any> = { type: "llm_search" };
+      const src = llmSources.split(",").map((s) => s.trim()).filter(Boolean);
+      if (src.length) cfg.primary_sources = src;
+      if (llmExtras.trim()) cfg.prompt_extras = llmExtras.trim();
+      return cfg;
+    }
+    if (resolver === "json_api") {
+      return {
+        type: "json_api", url: api_url.trim(), jsonpath: api_path.trim() || "$",
+        comparator: api_comp, threshold: parseFloat(api_threshold),
+        auto_finalize_hours: parseInt(api_hours, 10) || 24,
+      };
+    }
+    return null; // manual
+  };
   const labeled = marketType === "labeled";
   const yesName = labeled && (form.yes_label ?? "").trim() ? form.yes_label!.trim() : "Sí";
   const noName  = labeled && (form.no_label ?? "").trim()  ? form.no_label!.trim()  : "No";
@@ -190,9 +216,13 @@ function CreateMarketModal({ onClose, onCreated }: { onClose: () => void; onCrea
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setBusy(true); setErr(null);
+    if (resolver === "json_api" && !api_url.trim()) {
+      setErr("El resolver por API de datos requiere una URL."); setBusy(false); return;
+    }
     try {
       await api.createMarket({
         ...form, id: overrideId || undefined, yes_label: yesName, no_label: noName,
+        resolution_config: buildResolutionConfig(),
         closes_at: new Date(form.closes_at).toISOString(),
       });
       onCreated();
@@ -247,6 +277,50 @@ function CreateMarketModal({ onClose, onCreated }: { onClose: () => void; onCrea
                    onChange={(e) => setForm({ ...form, closes_at: e.target.value })} className={inp}/>
             {form.closes_at && <div className="text-[11px] text-ink-400 dark:text-ink-500 mt-1 num">Cierra: {fmtDateTime(form.closes_at)}</div>}
           </F>
+
+          <F label="Resolución (cómo se decide el resultado al cerrar)">
+            <div className="grid grid-cols-3 gap-2">
+              {([["manual", "Manual"], ["llm_search", "Asistida IA"], ["json_api", "API de datos"]] as const).map(([v, l]) => (
+                <button key={v} type="button" onClick={() => setResolver(v)}
+                  className={`h-9 rounded-lg border text-xs font-medium ${resolver === v ? "border-accent-500 bg-accent-500/10 text-accent-500" : "border-ink-200 dark:border-ink-800"}`}>{l}</button>
+              ))}
+            </div>
+          </F>
+          {resolver === "manual" && (
+            <p className="text-[11px] text-ink-400 dark:text-ink-500 -mt-1">Vos resolvés a mano en la cola de resoluciones al cerrar.</p>
+          )}
+          {resolver === "llm_search" && (
+            <>
+              <p className="text-[11px] text-ink-400 dark:text-ink-500 -mt-1">Al cerrar, la IA propone el resultado leyendo las reglas; confirmás en la cola. Requiere la API key de Anthropic configurada; si no, cae a la cola manual.</p>
+              <F label="Fuentes primarias (URLs separadas por coma) — opcional">
+                <input value={llmSources} onChange={(e) => setLlmSources(e.target.value)} className={inp} placeholder="conmebol.com, ..."/>
+              </F>
+              <F label="Guía extra para la IA — opcional">
+                <textarea rows={2} value={llmExtras} onChange={(e) => setLlmExtras(e.target.value)} className={`${inp} resize-y`} placeholder="Ej. usar el resultado oficial de CONMEBOL."/>
+              </F>
+            </>
+          )}
+          {resolver === "json_api" && (
+            <>
+              <p className="text-[11px] text-ink-400 dark:text-ink-500 -mt-1">Consulta una URL JSON y compara un valor contra un umbral. Se auto-finaliza a las N horas si nadie disputa.</p>
+              <F label="URL de datos (JSON)">
+                <input value={api_url} onChange={(e) => setApiUrl(e.target.value)} className={inp} placeholder="https://api.ejemplo.com/..."/>
+              </F>
+              <div className="grid grid-cols-2 gap-3">
+                <F label="Campo (JSONPath)"><input value={api_path} onChange={(e) => setApiPath(e.target.value)} className={inp} placeholder="$.price"/></F>
+                <F label="Comparador">
+                  <select value={api_comp} onChange={(e) => setApiComp(e.target.value)} className={inp}>
+                    {[">=", "<=", ">", "<", "==", "!="].map((o) => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                </F>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <F label="Umbral"><input type="number" value={api_threshold} onChange={(e) => setApiThreshold(e.target.value)} className={inp}/></F>
+                <F label="Auto-finaliza (horas)"><input type="number" min="1" value={api_hours} onChange={(e) => setApiHours(e.target.value)} className={inp}/></F>
+              </div>
+              <p className="text-[11px] text-ink-400 dark:text-ink-500 -mt-1 mono">Resuelve SÍ si {api_path || "$"} {api_comp} umbral; NO si no.</p>
+            </>
+          )}
           {err && <div className="text-no-500 text-sm">{err}</div>}
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={onClose} className="h-10 px-4 rounded-lg border border-ink-200 dark:border-ink-700 text-sm">Cancelar</button>

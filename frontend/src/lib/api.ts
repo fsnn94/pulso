@@ -353,6 +353,7 @@ export type MarketCreateIn = {
   category: string; yes_label?: string; no_label?: string;
   closes_at: string; initial_yes_price?: number;
   resolution_source?: string;
+  resolution_config?: Record<string, any> | null;
 };
 export type ProposalIn = {
   slug: string; title: string; short_title: string; description: string;

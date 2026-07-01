@@ -124,7 +124,11 @@ export default function MarketDetailPage() {
             <div className="mt-4 grid sm:grid-cols-2 gap-3 text-sm">
               <KV k="Resuelve el" v={fmtDateTime(market.closes_at)}/>
               <KV k="Fuente de resolución" v={market.resolution_source}/>
-              <KV k="Liquidación" v="Automática al resolverse"/>
+              <KV k="Método de resolución" v={
+                market.resolution_config?.type === "llm_search" ? "Asistida por IA (con confirmación)"
+                : market.resolution_config?.type === "json_api" ? "Automática (API de datos)"
+                : "Manual (revisión del equipo)"
+              }/>
               <KV k="ID de mercado" v={market.id} mono/>
             </div>
           </div>

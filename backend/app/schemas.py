@@ -116,6 +116,9 @@ class MarketCreateIn(BaseModel):
     closes_at: datetime
     initial_yes_price: float = Field(ge=0.02, le=0.98, default=0.5)
     resolution_source: str = "Official primary source"
+    # Config del resolver: {"type":"manual"} | {"type":"llm_search",...} |
+    # {"type":"json_api","url","jsonpath","comparator","threshold","auto_finalize_hours"}
+    resolution_config: dict | None = None
 
 
 class MarketResolveIn(BaseModel):

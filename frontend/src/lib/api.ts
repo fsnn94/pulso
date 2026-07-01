@@ -98,6 +98,10 @@ export const api = {
   markAllRead: () => request<{ ok: boolean }>("/notifications/read-all", { method: "POST" }),
   markRead: (id: string) => request<Notification>(`/notifications/${id}/read`, { method: "POST" }),
 
+  // leaderboard
+  leaderboard: (metric: "pnl" | "volume" | "trades" = "pnl", limit = 50) =>
+    request<Leaderboard>(`/leaderboard?metric=${metric}&limit=${limit}`),
+
   // public profiles (item #7)
   userProfile: (handle: string) => request<PublicProfile>(`/users/${encodeURIComponent(handle)}`),
   userTrades:  (handle: string, limit = 50) =>
@@ -255,6 +259,11 @@ export type Notification = {
   id: string; kind: string; title: string; body: string;
   market_id: string | null; read_at: string | null; created_at: string;
 };
+export type LeaderboardRow = {
+  handle: string; pnl: number; realized_pnl: number;
+  volume: number; trades: number; markets: number;
+};
+export type Leaderboard = { metric: "pnl" | "volume" | "trades"; rows: LeaderboardRow[] };
 export type PublicProfile = {
   handle: string; created_at: string;
   realized_pnl: number; unrealized_pnl: number;

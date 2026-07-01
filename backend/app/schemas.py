@@ -182,6 +182,20 @@ class PublicProfileOut(BaseModel):
     total_volume: float       # nocional operado (precio * cantidad)
 
 
+class LeaderboardRow(BaseModel):
+    handle: str
+    pnl: float            # realizado + no realizado
+    realized_pnl: float
+    volume: float         # nocional operado
+    trades: int
+    markets: int
+
+
+class LeaderboardOut(BaseModel):
+    metric: str           # pnl | volume | trades
+    rows: list[LeaderboardRow]
+
+
 class PublicTradeOut(BaseModel):
     """Una operación pública de un usuario, con título del mercado para mostrar."""
     id: uuid.UUID

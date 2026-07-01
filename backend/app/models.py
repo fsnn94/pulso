@@ -296,6 +296,31 @@ class Commission(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
 
 
+class HouseLedgerKind(str, PyEnum):
+    PREMIUM    = "PREMIUM"     # compra a mercado: el usuario paga, la casa recibe (+)
+    RESERVE    = "RESERVE"     # colocación de orden LIMIT: efectivo reservado hacia la casa (+)
+    BUYBACK    = "BUYBACK"     # venta a mercado: la casa le paga al usuario (−)
+    REFUND     = "REFUND"      # cancelación / nulo / reembolso de orden: la casa devuelve (−)
+    SETTLE     = "SETTLE"      # pago a ganadores al resolver: la casa paga (−)
+    COMMISSION = "COMMISSION"  # comisión: la casa recibe (+)
+
+
+class HouseLedger(Base):
+    """Contabilidad de doble entrada de la casa. Cada cambio de `cash` de un
+    usuario por trading se refleja acá con signo opuesto (+ = entra a la casa,
+    − = sale de la casa), de modo que `Σ users.cash + Σ house = créditos
+    otorgados`. Así ninguna moneda queda sin contabilizar y el balance de la
+    casa (que puede ser negativo) es su P&L de creador de mercado + comisiones.
+    Se crea con create_all (como la tabla Commission)."""
+    __tablename__ = "house_ledger"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    market_id: Mapped[str | None] = mapped_column(String(64), ForeignKey("markets.id"), nullable=True, index=True)
+    kind: Mapped[HouseLedgerKind] = mapped_column(Enum(HouseLedgerKind), nullable=False)
+    amount: Mapped[float] = mapped_column(Float, nullable=False)  # con signo
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+
 class AmlSeverity(str, PyEnum):
     INFO    = "INFO"
     LOW     = "LOW"

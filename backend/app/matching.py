@@ -36,8 +36,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import get_settings
 from .models import (
-    Activity, AppSetting, Commission, CommissionSource, Market, MarketStatus, Order,
-    OrderAction, OrderStatus, OrderType, Position, Side, Trade, User,
+    Activity, AppSetting, Commission, CommissionSource, HouseLedger, HouseLedgerKind,
+    Market, MarketStatus, Order, OrderAction, OrderStatus, OrderType, Position, Side,
+    Trade, User,
 )
 
 COMMISSION_RATE_KEY = "commission_rate"
@@ -121,6 +122,15 @@ def _record_activity(db: AsyncSession, **kw) -> None:
     db.add(Activity(**kw))
 
 
+def _house(db: AsyncSession, market_id: str | None, amount: float, kind: HouseLedgerKind) -> None:
+    """Contrapartida de la casa (doble entrada). amount>0 entra a la casa, <0 sale.
+    Debe llamarse con el signo OPUESTO al cambio de user.cash, en cada flujo de
+    trading, para que Σ users.cash + Σ house = créditos otorgados."""
+    if abs(amount) < 1e-12:
+        return
+    db.add(HouseLedger(market_id=market_id, amount=amount, kind=kind))
+
+
 async def get_commission_rate(db: AsyncSession) -> float:
     """Current house fee rate. Editable at runtime via the app_settings table;
     falls back to the config default when unset/invalid."""
@@ -144,6 +154,7 @@ def _charge_commission(
         return 0.0
     amount = gross_profit * rate
     user.cash -= amount
+    _house(db, market_id, amount, HouseLedgerKind.COMMISSION)
     db.add(Commission(
         user_id=user.id, market_id=market_id, source=source,
         gross_profit=gross_profit, rate=rate, amount=amount,
@@ -213,6 +224,7 @@ async def _fill_market_buy(db: AsyncSession, market: Market, user: User, order: 
         raise HTTPException(400, f"Saldo insuficiente: requiere {cost:.2f}, tienes {user.cash:.2f}")
 
     user.cash -= cost
+    _house(db, market.id, cost, HouseLedgerKind.PREMIUM)
     pos = await _get_or_create_position(db, user.id, market.id, order.side)
     _credit_position(pos, order.quantity, fill_price)
 
@@ -246,6 +258,7 @@ async def _place_limit_buy(db: AsyncSession, market: Market, user: User, order: 
     if user.cash + EPSILON < reserved:
         raise HTTPException(400, f"Saldo insuficiente para reservar {reserved:.2f}")
     user.cash -= reserved
+    _house(db, market.id, reserved, HouseLedgerKind.RESERVE)
 
     _record_activity(db, user_id=user.id, market_id=market.id, kind="ORDER_PLACED",
                      side=order.side, quantity=order.quantity, price=order.limit_price, total=reserved,
@@ -387,6 +400,7 @@ async def _fill_market_sell(db: AsyncSession, market: Market, user: User, order:
 
     realized = _debit_position(pos, order.quantity, fill_price)
     user.cash += proceeds
+    _house(db, market.id, -proceeds, HouseLedgerKind.BUYBACK)
     rate = await get_commission_rate(db)
     commission = _charge_commission(db, user, market.id, realized, CommissionSource.CLOSE, rate)
     pos.realized_pnl -= commission  # realized P&L is reported net of the fee
@@ -429,6 +443,7 @@ async def cancel_order(db: AsyncSession, user: User, order_id: uuid.UUID) -> Ord
         unfilled = order.quantity - order.filled_quantity
         refund = order.limit_price * max(unfilled, 0.0)
         user.cash += refund
+        _house(db, order.market_id, -refund, HouseLedgerKind.REFUND)
         _record_activity(db, user_id=user.id, market_id=order.market_id, kind="ORDER_CANCELLED",
                          side=order.side, quantity=unfilled, price=order.limit_price, total=refund,
                          note="Compra LIMIT cancelada")
@@ -452,9 +467,11 @@ async def resolve_market(db: AsyncSession, market: Market, outcome: Side) -> int
     )
     for o in open_orders.scalars().all():
         if o.action == OrderAction.BUY and o.type == OrderType.LIMIT and o.limit_price is not None:
+            refund = o.limit_price * max(o.quantity - o.filled_quantity, 0.0)
             u = await db.get(User, o.user_id)
             if u:
-                u.cash += o.limit_price * max(o.quantity - o.filled_quantity, 0.0)
+                u.cash += refund
+                _house(db, market.id, -refund, HouseLedgerKind.REFUND)
         o.status = OrderStatus.CANCELLED
 
     # Pay out winners
@@ -469,6 +486,7 @@ async def resolve_market(db: AsyncSession, market: Market, outcome: Side) -> int
             u = await db.get(User, p.user_id)
             if u:
                 u.cash += payout
+                _house(db, market.id, -payout, HouseLedgerKind.SETTLE)
                 commission = _charge_commission(db, u, market.id, profit, CommissionSource.RESOLVE, rate)
             _record_activity(db, user_id=p.user_id, market_id=market.id, kind="RESOLVED",
                              side=p.side, quantity=p.shares, price=1.0, total=payout,
@@ -522,9 +540,11 @@ async def void_market(db: AsyncSession, market: Market) -> int:
     )
     for o in open_orders.scalars().all():
         if o.action == OrderAction.BUY and o.type == OrderType.LIMIT and o.limit_price is not None:
+            refund = o.limit_price * max(o.quantity - o.filled_quantity, 0.0)
             u = await db.get(User, o.user_id)
             if u:
-                u.cash += o.limit_price * max(o.quantity - o.filled_quantity, 0.0)
+                u.cash += refund
+                _house(db, market.id, -refund, HouseLedgerKind.REFUND)
         o.status = OrderStatus.CANCELLED
 
     # Refund all open positions at avg cost
@@ -535,6 +555,7 @@ async def void_market(db: AsyncSession, market: Market) -> int:
         u = await db.get(User, p.user_id)
         if u:
             u.cash += refund
+            _house(db, market.id, -refund, HouseLedgerKind.REFUND)
         _record_activity(db, user_id=p.user_id, market_id=market.id, kind="VOIDED",
                          side=p.side, quantity=p.shares, price=p.avg_cost, total=refund,
                          note="Mercado nulo — reembolsado al costo promedio")

@@ -164,6 +164,61 @@ export default function AdminCashflowPage() {
         )}
       </div>
 
+      {/* Casa / creador de mercado (contabilidad de doble entrada) */}
+      <div className="rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-5 mb-6">
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 className="font-semibold">Casa · contabilidad</h2>
+            <p className="text-xs text-ink-500 dark:text-ink-400 mt-0.5 max-w-prose">
+              Doble entrada: cada movimiento de saldo por trading se refleja acá con signo opuesto,
+              así <strong>Σ saldos de usuarios + casa = créditos otorgados</strong> (nada se escapa).
+              Un balance negativo = la casa pagó más de lo que cobró como contraparte de órdenes a mercado.
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="text-[10px] uppercase tracking-wider text-ink-500 dark:text-ink-400">Balance total de la casa</div>
+            <div className={`text-3xl font-semibold num ${kpi && kpi.house_total < 0 ? "text-no-500" : "text-yes-500"}`}>
+              {kpi ? usd(kpi.house_total) : "—"}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <MiniStat label="Creador de mercado (sin comisiones)" value={kpi ? usd(kpi.house_mm) : "—"}/>
+          <MiniStat label="Comisiones incluidas" value={kpi ? usd(kpi.commission_total) : "—"}/>
+        </div>
+
+        {kpi?.house_by_market.length ? (
+          <>
+            <div className="text-[11px] uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">Exposición por mercado (creador de mercado)</div>
+            <table className="w-full text-sm">
+              <thead className="text-[11px] uppercase tracking-wider text-ink-500 dark:text-ink-400">
+                <tr className="border-b border-ink-100 dark:border-ink-800">
+                  <th className="text-left py-2 font-medium">Mercado</th>
+                  <th className="text-right py-2 font-medium">P&L de la casa</th>
+                </tr>
+              </thead>
+              <tbody>
+                {kpi.house_by_market.map((h) => (
+                  <tr key={h.market_id ?? "—"} className="border-b border-ink-50 dark:border-ink-800/50 last:border-0">
+                    <td className="py-2">
+                      {h.market_id
+                        ? <Link href={`/markets/${h.market_id}`} className="hover:text-accent-500">{h.title ?? h.market_id}</Link>
+                        : <span className="text-ink-500">—</span>}
+                    </td>
+                    <td className={`py-2 text-right num font-medium ${h.amount < 0 ? "text-no-500" : "text-yes-500"}`}>
+                      {h.amount >= 0 ? "+" : ""}{usd(h.amount)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        ) : (
+          <div className="text-sm text-ink-500 dark:text-ink-400 py-2">Todavía no hay movimientos de la casa.</div>
+        )}
+      </div>
+
       <div className="grid lg:grid-cols-[1fr_360px] gap-6">
         {/* Historical + categories */}
         <div className="space-y-4">

@@ -21,8 +21,8 @@ from ..matching import resolve_market, get_commission_rate, COMMISSION_RATE_KEY
 from ..notifications import notify
 from ..models import (
     Activity, AmlAlert, AmlMute, AppSetting, Commission, EmailVerification,
-    Market, MarketDispute, MarketProposal, MarketStatus, Order, Position,
-    ProposalStatus, ResolutionProposal, Trade, User,
+    HouseLedger, HouseLedgerKind, Market, MarketDispute, MarketProposal,
+    MarketStatus, Order, Position, ProposalStatus, ResolutionProposal, Trade, User,
 )
 from ..schemas import (
     AdminPermsIn, AdminUserRow, CashflowKpiOut, CommissionRateIn, CommissionRow,
@@ -213,6 +213,28 @@ async def cashflow(
         for row in comm_mkt_rs
     ]
 
+    # ----- House ledger (contabilidad de doble entrada de la casa) -----
+    house_total = (await db.execute(
+        select(func.coalesce(func.sum(HouseLedger.amount), 0.0))
+    )).scalar_one()
+    house_mm = (await db.execute(
+        select(func.coalesce(func.sum(HouseLedger.amount), 0.0))
+        .where(HouseLedger.kind != HouseLedgerKind.COMMISSION)
+    )).scalar_one()
+    house_mkt_rs = await db.execute(
+        select(
+            HouseLedger.market_id,
+            Market.title,
+            func.coalesce(func.sum(HouseLedger.amount), 0.0).label("amount"),
+        ).outerjoin(Market, Market.id == HouseLedger.market_id)
+        .where(HouseLedger.kind != HouseLedgerKind.COMMISSION)
+        .group_by(HouseLedger.market_id, Market.title).order_by("amount").limit(20)
+    )
+    house_by_market = [
+        {"market_id": row.market_id, "title": row.title, "amount": float(row.amount)}
+        for row in house_mkt_rs
+    ]
+
     return CashflowKpiOut(
         volume_24h=float(vol_24h or 0.0),
         trades_24h=int(trades_24h or 0),
@@ -226,6 +248,9 @@ async def cashflow(
         commission_24h=float(commission_24h or 0.0),
         commission_count=int(commission_count or 0),
         commission_by_market=commission_by_market,
+        house_total=float(house_total or 0.0),
+        house_mm=float(house_mm or 0.0),
+        house_by_market=house_by_market,
         series=series, by_category=by_category,
     )
 

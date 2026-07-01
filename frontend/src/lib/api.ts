@@ -336,6 +336,9 @@ export type CashflowKpi = {
   commission_total: number; commission_period: number; commission_24h: number;
   commission_count: number;
   commission_by_market: { market_id: string | null; title: string | null; amount: number; count: number }[];
+  house_total: number;
+  house_mm: number;
+  house_by_market: { market_id: string | null; title: string | null; amount: number }[];
   series: { day: string; volume: number; trades: number }[];
   by_category: { category: string; volume: number; trades: number }[];
 };

@@ -308,6 +308,10 @@ class CashflowKpiOut(BaseModel):
     commission_24h: float
     commission_count: int            # number of fees charged all-time
     commission_by_market: list[dict] # [{market_id, title, amount, count}]
+    # Contabilidad de la casa (doble entrada; ver HouseLedger)
+    house_total: float               # balance total de la casa (MM + comisiones)
+    house_mm: float                  # solo creador de mercado (excluye comisiones)
+    house_by_market: list[dict]      # [{market_id, title, amount}] — más negativo primero
     series: list[dict]
     by_category: list[dict]
 

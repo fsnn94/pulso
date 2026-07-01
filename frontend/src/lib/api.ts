@@ -71,6 +71,8 @@ export const api = {
     return request<{ items: Market[] }>(`/markets?${p}`);
   },
   getMarket:  (id: string) => request<Market>(`/markets/${id}`),
+  marketHistory: (id: string, range: EquityRange = "all") =>
+    request<MarketHistory>(`/markets/${id}/history?range=${range}`),
   marketSummary: (id: string) => request<MarketSummary>(`/markets/${id}/summary`),
   getBook:    (id: string) => request<Book>(`/markets/${id}/book`),
   getTrades:  (id: string) => request<Trade[]>(`/markets/${id}/trades`),
@@ -291,6 +293,10 @@ export type Portfolio = {
   positions: Position[]; activity: Activity[];
 };
 export type EquityRange = "24h" | "1w" | "1m" | "1y" | "all";
+export type MarketHistory = {
+  market_id: string; range: EquityRange;
+  points: { ts: string; p: number }[];
+};
 export type EquityPoint = { ts: string; equity: number; cash: number; pnl: number };
 export type EquityHistory = {
   range: EquityRange; starting_credits: number; points: EquityPoint[];

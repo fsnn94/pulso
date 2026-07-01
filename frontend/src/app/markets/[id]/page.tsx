@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { api, Book, Market, ResolutionProposal, Trade } from "@/lib/api";
+import { api, Book, EquityRange, Market, ResolutionProposal, Trade } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useMarketSocket } from "@/lib/ws";
 import { LineChart } from "@/components/charts";
@@ -19,19 +19,23 @@ export default function MarketDetailPage() {
 
   const [market, setMarket]   = useState<Market | null>(null);
   const [history, setHistory] = useState<{ t: number; p: number }[]>([]);
+  const [range, setRange]     = useState<EquityRange>("all");
   const [book, setBook]       = useState<Book | null>(null);
   const [trades, setTrades]   = useState<Trade[]>([]);
   const [tick, setTick]       = useState(0);
 
   useEffect(() => {
-    api.getMarket(id).then((m) => {
-      setMarket(m);
-      setHistory([{ t: Date.now() - 60_000, p: m.current_yes_price },
-                  { t: Date.now(), p: m.current_yes_price }]);
-    }).catch(() => {});
+    api.getMarket(id).then(setMarket).catch(() => {});
     api.getBook(id).then(setBook).catch(() => {});
     api.getTrades(id).then(setTrades).catch(() => {});
   }, [id, tick]);
+
+  // Historial de precios persistido (derivado de trades) + punto en vivo.
+  useEffect(() => {
+    api.marketHistory(id, range)
+      .then((h) => setHistory(h.points.map((pt) => ({ t: new Date(pt.ts).getTime(), p: pt.p }))))
+      .catch(() => {});
+  }, [id, range, tick]);
 
   useMarketSocket((e) => {
     if (e.type === "price" && e.market_id === id) {
@@ -88,8 +92,20 @@ export default function MarketDetailPage() {
           <ResolutionBanner market={market} onChange={() => setTick((t) => t + 1)} />
 
           <div className="mt-6 rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-sm text-ink-500 dark:text-ink-400">Tendencia de probabilidad</div>
+            <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+              <div className="text-sm text-ink-500 dark:text-ink-400">
+                Historial de probabilidad {labeled ? `· ${sideLabel(market, "YES")}` : "· Sí"}
+              </div>
+              <div className="flex items-center gap-1 rounded-lg border border-ink-200 dark:border-ink-700 p-0.5">
+                {(["24h", "1w", "1m", "1y", "all"] as EquityRange[]).map((r) => (
+                  <button key={r} onClick={() => setRange(r)}
+                    className={`h-6 px-2 text-[11px] font-medium rounded-md ${range === r
+                      ? "bg-ink-900 text-white dark:bg-white dark:text-ink-900"
+                      : "text-ink-500 dark:text-ink-400 hover:bg-ink-50 dark:hover:bg-ink-800"}`}>
+                    {r === "1w" ? "1S" : r === "1m" ? "1M" : r === "1y" ? "1A" : r === "all" ? "Todo" : r}
+                  </button>
+                ))}
+              </div>
             </div>
             <LineChart data={history} accent="#A41F13"/>
           </div>

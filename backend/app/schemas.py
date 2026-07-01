@@ -92,6 +92,18 @@ class MarketsOut(BaseModel):
     items: list[MarketBase]
 
 
+# ---------- Market price history ----------
+class PricePoint(BaseModel):
+    ts: datetime
+    p: float                 # probabilidad YES (0..1)
+
+
+class MarketHistoryOut(BaseModel):
+    market_id: str
+    range: str               # 24h | 1w | 1m | 1y | all
+    points: list[PricePoint]
+
+
 class MarketCreateIn(BaseModel):
     id: str = Field(pattern=r"^[a-z0-9-]{3,64}$")
     title: str = Field(max_length=500)

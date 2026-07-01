@@ -1,5 +1,6 @@
 """Public market routes."""
 from __future__ import annotations
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -8,9 +9,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
 from ..models import Activity, Market, Order, OrderStatus, OrderAction, Side, Trade, User
-from ..schemas import MarketBase, MarketsOut, MarketSummaryOut, OrderOut, TradeOut
+from ..schemas import (
+    MarketBase, MarketHistoryOut, MarketsOut, MarketSummaryOut, OrderOut,
+    PricePoint, TradeOut,
+)
 
 router = APIRouter(prefix="/markets", tags=["markets"])
+
+_HIST_RANGES: dict[str, timedelta | None] = {
+    "24h": timedelta(hours=24), "1w": timedelta(weeks=1),
+    "1m": timedelta(days=30), "1y": timedelta(days=365), "all": None,
+}
+
+
+def _downsample_points(rows: list, max_points: int) -> list:
+    n = len(rows)
+    if n <= max_points:
+        return rows
+    step = (n - 1) / (max_points - 1)
+    idx = sorted({round(i * step) for i in range(max_points)} | {0, n - 1})
+    return [rows[i] for i in idx]
 
 
 @router.get("", response_model=MarketsOut)
@@ -117,6 +135,37 @@ async def get_book(market_id: str, db: Annotated[AsyncSession, Depends(get_db)],
         "no_bids":  await side_levels(Side.NO,  OrderAction.BUY,  top_high=True),
         "no_asks":  await side_levels(Side.NO,  OrderAction.SELL, top_high=False),
     }
+
+
+@router.get("/{market_id}/history", response_model=MarketHistoryOut)
+async def market_history(
+    market_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    range: str = Query("all", pattern="^(24h|1w|1m|1y|all)$"),
+):
+    """Curva de probabilidad YES a lo largo del tiempo, derivada de las
+    operaciones (cada trade YES imprime su precio; cada trade NO imprime 1−precio)."""
+    m = await db.get(Market, market_id)
+    if not m:
+        raise HTTPException(404, "Mercado no encontrado")
+    now = datetime.now(timezone.utc)
+    delta = _HIST_RANGES[range]
+    start = None if delta is None else now - delta
+
+    q = select(Trade.created_at, Trade.side, Trade.price).where(Trade.market_id == market_id)
+    if start is not None:
+        q = q.where(Trade.created_at >= start)
+    q = q.order_by(Trade.created_at)
+    rows = (await db.execute(q)).all()
+
+    points = [
+        PricePoint(ts=ts, p=(price if side == Side.YES else 1.0 - price))
+        for ts, side, price in rows
+    ]
+    points = _downsample_points(points, 200)
+    # La punta siempre es el precio actual del mercado.
+    points.append(PricePoint(ts=now, p=m.current_yes_price))
+    return MarketHistoryOut(market_id=market_id, range=range, points=points)
 
 
 @router.get("/{market_id}/trades", response_model=list[TradeOut])

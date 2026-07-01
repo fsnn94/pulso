@@ -16,9 +16,25 @@ export function Footer() {
             Una plataforma de predicción de grado académico. Pulso es una herramienta para estudiar probabilidades — no es una casa de bolsa ni un sitio de apuestas.
           </p>
         </div>
-        <Col title="Producto" items={[{ label: "Mercados", href: "/" }, { label: "Cómo funciona", href: "/como-funciona" }, { label: "API" }, { label: "Estado" }]} />
-        <Col title="Recursos" items={[{ label: "Metodología" }, { label: "Reglas de resolución" }, { label: "Glosario" }, { label: "Educación" }]} />
-        <Col title="Cumplimiento" items={[{ label: "Descargo" }, { label: "Términos" }, { label: "Privacidad" }, { label: "Restricciones regionales" }]} />
+        <Col title="Producto" items={[
+          { label: "Mercados", href: "/" },
+          { label: "Cómo funciona", href: "/como-funciona" },
+          { label: "API", href: "/api" },
+          { label: "Estado", href: "/estado" },
+        ]} />
+        <Col title="Recursos" items={[
+          { label: "Metodología", href: "/metodologia" },
+          { label: "Reglas de resolución", href: "/reglas-de-resolucion" },
+          { label: "Glosario", href: "/glosario" },
+          { label: "Educación", href: "/como-funciona" },
+        ]} />
+        <Col title="Cumplimiento" items={[
+          { label: "Descargo", href: "/descargo" },
+          { label: "Términos", href: "/terminos" },
+          { label: "Privacidad", href: "/privacidad" },
+          { label: "Restricciones regionales", href: "/restricciones" },
+          { label: "Marco regulatorio", href: "/compliance" },
+        ]} />
       </div>
       <div className="border-t border-ink-100 dark:border-ink-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row gap-3 sm:items-center text-xs text-ink-500 dark:text-ink-400">

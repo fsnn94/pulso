@@ -264,6 +264,20 @@ class EquitySnapshot(Base):
     )
 
 
+class MarketComment(Base):
+    """Comentario de un usuario en un mercado (capa social). Se crea con
+    create_all. La moderación es un soft-hide (hidden=True) para conservar el
+    registro."""
+    __tablename__ = "market_comments"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    market_id: Mapped[str] = mapped_column(String(64), ForeignKey("markets.id"), nullable=False, index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    body: Mapped[str] = mapped_column(String(1000), nullable=False)
+    hidden: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+
 class AppSetting(Base):
     """Mutable runtime settings editable from the admin UI (e.g. commission rate).
     Key/value for forward-compat; seeded lazily from config defaults."""

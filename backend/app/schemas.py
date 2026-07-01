@@ -182,6 +182,18 @@ class PublicProfileOut(BaseModel):
     total_volume: float       # nocional operado (precio * cantidad)
 
 
+class CommentIn(BaseModel):
+    body: str = Field(min_length=2, max_length=1000)
+
+
+class CommentOut(BaseModel):
+    id: uuid.UUID
+    market_id: str
+    handle: str
+    body: str
+    created_at: datetime
+
+
 class LeaderboardRow(BaseModel):
     handle: str
     pnl: float            # realizado + no realizado

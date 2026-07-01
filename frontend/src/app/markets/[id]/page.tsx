@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { useMarketSocket } from "@/lib/ws";
 import { LineChart } from "@/components/charts";
 import { TradePanel } from "@/components/TradePanel";
+import { MarketComments } from "@/components/MarketComments";
 import { MarketSummaryCard } from "@/components/MarketSummaryCard";
 import { Icon } from "@/components/Icon";
 import { compact, pct, timeAgo, statusEs } from "@/lib/format";
@@ -130,6 +131,7 @@ export default function MarketDetailPage() {
 
           {book && <BookView book={book} market={market} />}
           <TradesView trades={trades} market={market} />
+          <MarketComments marketId={market.id} />
         </div>
 
         <div className="lg:sticky lg:top-24 lg:self-start space-y-4">

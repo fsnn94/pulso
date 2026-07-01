@@ -77,6 +77,13 @@ export const api = {
   getBook:    (id: string) => request<Book>(`/markets/${id}/book`),
   getTrades:  (id: string) => request<Trade[]>(`/markets/${id}/trades`),
 
+  // comments
+  marketComments: (id: string) => request<Comment[]>(`/markets/${id}/comments`),
+  postComment: (id: string, body: string) =>
+    request<Comment>(`/markets/${id}/comments`, { method: "POST", body: JSON.stringify({ body }) }),
+  deleteComment: (id: string, commentId: string) =>
+    request<{ ok: boolean }>(`/markets/${id}/comments/${commentId}`, { method: "DELETE" }),
+
   // orders
   placeOrder: (b: OrderIn) => request<Order>("/orders", { method: "POST", body: JSON.stringify(b) }),
   myOrders:   (open_only = false) => request<Order[]>(`/orders?open_only=${open_only}`),
@@ -258,6 +265,9 @@ export type Trade = {
 export type Notification = {
   id: string; kind: string; title: string; body: string;
   market_id: string | null; read_at: string | null; created_at: string;
+};
+export type Comment = {
+  id: string; market_id: string; handle: string; body: string; created_at: string;
 };
 export type LeaderboardRow = {
   handle: string; pnl: number; realized_pnl: number;

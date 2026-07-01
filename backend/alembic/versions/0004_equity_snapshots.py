@@ -17,6 +17,13 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # Idempotente: la tabla puede existir ya por Base.metadata.create_all(),
+    # que corre antes de las migraciones. Si existe, no hacemos nada (así la
+    # cadena de migraciones avanza a la siguiente en vez de abortar).
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+    if "equity_snapshots" in insp.get_table_names():
+        return
     op.create_table(
         "equity_snapshots",
         sa.Column("id", UUID(as_uuid=True), primary_key=True),

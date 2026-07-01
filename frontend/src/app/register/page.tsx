@@ -46,7 +46,7 @@ export default function RegisterPage() {
         </Field>
         <label className="flex items-start gap-2.5 text-xs text-ink-600 dark:text-ink-300 leading-relaxed">
           <input type="checkbox" required checked={accepted} onChange={(e) => setAccepted(e.target.checked)} className="mt-0.5"/>
-          <span>Entiendo que Pulso es una herramienta de investigación y educación. Las operaciones se simulan con créditos virtuales — no hay pagos en dinero real, no es un valor y no es una apuesta. Confirmo que soy mayor de edad en mi jurisdicción y que este producto está permitido allí.</span>
+          <span>Entiendo que Pulso opera con créditos virtuales — no hay pagos en dinero real, no es un valor y no es una apuesta. Confirmo que soy mayor de edad en mi jurisdicción y que este producto está permitido allí.</span>
         </label>
         {err && <div className="text-no-500 text-sm">{err}</div>}
         <button disabled={busy || !accepted} type="submit"

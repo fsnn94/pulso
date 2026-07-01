@@ -106,7 +106,7 @@ export function TradePanel({ market, onTraded }: { market: Market; onTraded?: ()
       <div className="rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-5 text-sm">
         <div className="font-semibold mb-2">Operar</div>
         <p className="text-ink-500 dark:text-ink-400 mb-4">
-          Ingresa para operar posiciones simuladas YES/NO en este mercado.
+          Ingresá para operar posiciones YES/NO en este mercado.
         </p>
         <Link href="/login" className="block w-full h-10 grid place-items-center rounded-lg bg-ink-900 text-white dark:bg-white dark:text-ink-900 font-medium">Ingresar</Link>
         <Link href="/register" className="block w-full h-10 mt-2 grid place-items-center rounded-lg border border-ink-200 dark:border-ink-700 font-medium">Crear cuenta</Link>
@@ -218,7 +218,7 @@ export function TradePanel({ market, onTraded }: { market: Market; onTraded?: ()
       )}
 
       <p className="mt-3 text-[11px] leading-relaxed text-ink-500 dark:text-ink-400">
-        Operaciones simuladas con créditos virtuales. Cada contrato paga $1 si el mercado resuelve a tu favor, $0 en caso contrario. No es un valor ni una apuesta.
+        Se opera con créditos virtuales, sin dinero real. Cada contrato paga $1 si el mercado resuelve a tu favor, $0 en caso contrario. No es un valor ni una apuesta.
       </p>
     </div>
   );

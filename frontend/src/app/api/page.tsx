@@ -10,7 +10,7 @@ export default function ApiPage() {
     <DocArticle
       eyebrow="Producto"
       title="API"
-      intro="Pulso corre sobre una API HTTP + WebSocket. Durante la vista previa de investigación es de solo lectura para exploración; las acciones que cambian estado requieren autenticación."
+      intro="Pulso corre sobre una API HTTP + WebSocket. La exploración pública es de solo lectura; las acciones que cambian estado requieren autenticación."
     >
       <DocSection title="Documentación interactiva">
         <p>
@@ -41,7 +41,7 @@ export default function ApiPage() {
       </DocSection>
 
       <DocNote>
-        La API está pensada para transparencia y exploración de la vista previa; su superficie y
+        La API está pensada para transparencia y exploración; su superficie y
         contratos pueden cambiar. No hay, por ahora, un programa de claves de API para terceros.
       </DocNote>
     </DocArticle>

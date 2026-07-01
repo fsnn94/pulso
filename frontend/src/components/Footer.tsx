@@ -13,7 +13,7 @@ export function Footer() {
             <span className="font-semibold tracking-tight">Pulso</span>
           </div>
           <p className="text-ink-500 dark:text-ink-400 leading-relaxed">
-            Una plataforma de predicción de grado académico. Pulso es una herramienta para estudiar probabilidades — no es una casa de bolsa ni un sitio de apuestas.
+            Una plataforma de mercados de predicción. Se opera con créditos virtuales, sin dinero real — no es una casa de bolsa ni un sitio de apuestas.
           </p>
         </div>
         <Col title="Producto" items={[
@@ -38,8 +38,8 @@ export function Footer() {
       </div>
       <div className="border-t border-ink-100 dark:border-ink-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row gap-3 sm:items-center text-xs text-ink-500 dark:text-ink-400">
-          <span className="flex items-center gap-2"><Icon name="shield" className="w-3.5 h-3.5"/> Operaciones simuladas · Sin dinero real · No disponible donde esté prohibido</span>
-          <span className="sm:ml-auto">© 2026 Pulso Research Inc. · Para uso académico y educativo.</span>
+          <span className="flex items-center gap-2"><Icon name="shield" className="w-3.5 h-3.5"/> Créditos virtuales · Sin dinero real · No disponible donde esté prohibido</span>
+          <span className="sm:ml-auto">© 2026 Pulso</span>
         </div>
       </div>
     </footer>

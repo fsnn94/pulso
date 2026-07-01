@@ -20,9 +20,11 @@ class Settings(BaseSettings):
     starting_credits: float = 10_000.0
     commission_rate: float = 0.05  # house fee charged on each realized gain (5% of profit)
     tick_size: float = 0.01
-    price_engine_interval: float = 2.0
 
     seed_on_startup: bool = True
+    # Datos demo (usuarios/mercados/posiciones de ejemplo). Off por defecto: la
+    # plataforma arranca limpia y los mercados se crean desde el panel de admin.
+    seed_demo_data: bool = False
     # Al arrancar, esta cuenta (por email) se marca como admin principal (superadmin).
     # Prod-friendly: se setea en la env var SUPERADMIN_EMAIL y toma efecto en el próximo deploy.
     superadmin_email: str = ""

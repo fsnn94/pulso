@@ -38,9 +38,6 @@ export function Header() {
           <Link href="/" className="flex items-center gap-2" aria-label="Inicio de Pulso">
             <span className="text-accent-500"><Icon name="logo" className="w-6 h-6"/></span>
             <span className="font-semibold tracking-tight">Pulso</span>
-            <span className="hidden sm:inline-block text-[10px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded bg-ink-100 dark:bg-ink-800 text-ink-500 dark:text-ink-400">
-              Vista previa
-            </span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-1 ml-2">

@@ -8,9 +8,9 @@ import { VerificationBanner } from "@/components/VerificationBanner";
 import { Footer } from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "Pulso — plataforma de predicción de grado académico",
+  title: "Pulso — mercados de predicción",
   description:
-    "Opera posiciones simuladas YES/NO sobre preguntas del futuro. Pulso es una herramienta de pronóstico y análisis de decisiones — no es apuestas ni una casa de bolsa.",
+    "Operá posiciones YES/NO sobre preguntas del futuro con créditos virtuales. Pulso es una plataforma de mercados de predicción — sin dinero real, no es apuestas ni una casa de bolsa.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

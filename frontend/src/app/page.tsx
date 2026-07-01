@@ -156,7 +156,7 @@ export default function HomePage() {
             </h1>
             <p className="mt-4 text-ink-500 dark:text-ink-400 max-w-prose leading-relaxed">
               Pulso agrega probabilidades sobre eventos futuros a partir de una comunidad de analistas.
-              Opera posiciones simuladas YES/NO, observa cómo se mueve el consenso en tiempo real y descubre qué mueve al mercado.
+              Operá posiciones YES/NO con créditos virtuales, observá cómo se mueve el consenso en tiempo real y descubrí qué mueve al mercado.
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <a href="#markets" className="h-10 px-4 grid place-items-center rounded-lg bg-ink-900 text-white dark:bg-white dark:text-ink-900 font-medium text-sm hover:opacity-90">

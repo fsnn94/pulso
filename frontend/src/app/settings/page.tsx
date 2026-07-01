@@ -141,7 +141,7 @@ function ExternalAccountsCard() {
       <div className="rounded-lg border border-dashed border-ink-200 dark:border-ink-700 px-4 py-6 text-center">
         <div className="text-sm font-medium">Próximamente</div>
         <p className="text-xs text-ink-500 dark:text-ink-400 mt-1">
-          Esta es una vista previa con créditos simulados. La vinculación de cuentas externas estará disponible más adelante.
+          Las cuentas operan con créditos virtuales. La vinculación de cuentas externas estará disponible más adelante.
         </p>
       </div>
     </Card>

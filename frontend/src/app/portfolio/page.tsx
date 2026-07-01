@@ -141,7 +141,7 @@ export default function PortfolioPage() {
       <div className="flex items-end justify-between flex-wrap gap-4 mb-8">
         <div>
           <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">Portafolio</h1>
-          <p className="text-ink-500 dark:text-ink-400 mt-1 text-sm">Tus posiciones simuladas, rendimiento y actividad.</p>
+          <p className="text-ink-500 dark:text-ink-400 mt-1 text-sm">Tus posiciones, rendimiento y actividad.</p>
         </div>
         <Link href="/" className="h-10 px-4 grid place-items-center rounded-lg border border-ink-200 dark:border-ink-800 hover:bg-ink-50 dark:hover:bg-ink-900 text-sm font-medium">
           Buscar mercados
@@ -173,7 +173,7 @@ export default function PortfolioPage() {
 
       <Section title={`Posiciones abiertas (${pf?.positions.length ?? 0})`}>
         {!pf || pf.positions.length === 0 ? (
-          <Empty body="Compra YES o NO en cualquier mercado para empezar tu portafolio simulado."/>
+          <Empty body="Comprá YES o NO en cualquier mercado para empezar tu portafolio."/>
         ) : (
           <Table head={["Mercado", "Lado", "Contratos", "Costo prom.", "Actual", "Valor", "P&L", "Cerrar"]}>
             {pf.positions.map((p) => {

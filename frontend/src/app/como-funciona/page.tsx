@@ -4,7 +4,7 @@ import { FaqAccordion, FaqItem } from "@/components/FaqAccordion";
 export const metadata = {
   title: "Cómo funciona — Pulso",
   description:
-    "Cómo operar mercados de predicción simulados en Pulso: contratos YES/NO, precios como probabilidad, órdenes a mercado y a límite, resolución y preguntas frecuentes.",
+    "Cómo operar en los mercados de predicción de Pulso: contratos YES/NO, precios como probabilidad, órdenes a mercado y a límite, resolución y preguntas frecuentes.",
 };
 
 export default function ComoFuncionaPage() {
@@ -13,10 +13,10 @@ export default function ComoFuncionaPage() {
       <p className="text-[11px] font-medium uppercase tracking-wider text-accent-500">Guía</p>
       <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight mt-1">Cómo funciona Pulso</h1>
       <p className="text-ink-500 dark:text-ink-400 mt-3 leading-relaxed">
-        Pulso es una plataforma de <strong>mercados de predicción simulados</strong>. Operás
-        posiciones YES/NO sobre preguntas del futuro usando créditos virtuales — sin dinero real, sin
-        depósitos ni retiros. Es una herramienta de pronóstico y análisis de decisiones, no apuestas
-        ni una casa de bolsa.
+        Pulso es una plataforma de <strong>mercados de predicción</strong>. Operás
+        posiciones YES/NO sobre preguntas del futuro usando <strong>créditos virtuales</strong> — sin
+        dinero real, sin depósitos ni retiros. Es una herramienta de pronóstico y análisis de
+        decisiones, no apuestas ni una casa de bolsa.
       </p>
 
       {/* ---- Pasos ---- */}
@@ -90,7 +90,7 @@ export default function ComoFuncionaPage() {
       </div>
 
       <p className="text-xs text-ink-500 dark:text-ink-400 mt-10 italic border-t border-ink-100 dark:border-ink-800 pt-4">
-        Operaciones simuladas con créditos virtuales. Cada contrato paga $1 si el mercado resuelve a tu
+        Se opera con créditos virtuales, sin dinero real. Cada contrato paga $1 si el mercado resuelve a tu
         favor, $0 en caso contrario. No es un valor, no es una apuesta y no hay dinero real involucrado.
         Más detalles en{" "}
         <Link href="/compliance" className="text-accent-500 underline">Cumplimiento</Link>.

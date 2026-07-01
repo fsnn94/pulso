@@ -12,8 +12,8 @@ export default function RestriccionesPage() {
     >
       <DocSection title="Principio general">
         <p>
-          Pulso es una vista previa de investigación que opera con créditos virtuales, sin dinero
-          real. Aun así, <strong>no está disponible donde su uso esté prohibido</strong> por la
+          Pulso opera con créditos virtuales, sin dinero real. Aun así,{" "}
+          <strong>no está disponible donde su uso esté prohibido</strong> por la
           normativa local. Al registrarte, declarás que su uso es lícito en tu jurisdicción.
         </p>
       </DocSection>

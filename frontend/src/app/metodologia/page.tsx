@@ -33,10 +33,9 @@ export default function MetodologiaPage() {
             disponible del libro; si mueve el precio, paga un pequeño <em>slippage</em>.
           </li>
           <li>
-            <strong>Motor de precios.</strong> Entre operaciones reales, un proceso de fondo aplica
-            una leve deriva con reversión a la media para simular actividad ambiente y mantener la
-            cinta viva. En un entorno con dinero real, este componente lo reemplazaría el flujo de
-            órdenes genuino.
+            <strong>Solo flujo real.</strong> El precio se mueve exclusivamente con las órdenes de
+            los participantes: no hay ningún proceso que "empuje" el precio artificialmente. Cada
+            ejecución imprime un precio nuevo que se transmite en vivo por WebSocket.
           </li>
         </ul>
       </DocSection>

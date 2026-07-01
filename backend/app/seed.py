@@ -70,6 +70,12 @@ async def seed_if_empty(db: AsyncSession) -> None:
         db.add(admin)
         await db.flush()
 
+    # Datos demo (mercados/usuarios/posiciones de ejemplo): solo si se opta
+    # explícitamente vía SEED_DEMO_DATA. Por defecto la plataforma arranca limpia.
+    if not settings.seed_demo_data:
+        await db.commit()
+        return
+
     # If no default admin was created (or already exists), fall back to any admin
     # in the DB so seeded markets still have a creator.
     if not admin:

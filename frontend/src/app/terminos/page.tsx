@@ -8,7 +8,7 @@ export default function TerminosPage() {
     <DocArticle
       eyebrow="Cumplimiento"
       title="Términos de uso"
-      intro="Las condiciones para usar Pulso en su modalidad de vista previa de investigación. Al crear una cuenta, aceptás estos términos."
+      intro="Las condiciones para usar Pulso. Al crear una cuenta, aceptás estos términos."
     >
       <DocSection title="1. Elegibilidad y cuenta">
         <ul>

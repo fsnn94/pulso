@@ -11,7 +11,7 @@ from ..aml import evaluate_after_trade
 from ..db import get_db
 from ..deps import get_current_user, require_verified
 from ..matching import place_order, cancel_order
-from ..models import AmlAlertStatus, Order, OrderStatus, User
+from ..models import AmlAlertStatus, Market, Order, OrderStatus, User
 from ..schemas import OrderIn, OrderOut
 from ..ws import broadcast_market_event
 
@@ -36,6 +36,17 @@ async def place(
 
     if fills:
         market_ids = {f.market_id for f in fills}
+        # El precio en vivo ahora lo mueve el flujo de órdenes reales (ya no hay
+        # motor de deriva): al ejecutarse un trade, emitimos el precio actualizado.
+        for mid in market_ids:
+            yes = (await db.execute(
+                select(Market.current_yes_price).where(Market.id == mid)
+            )).scalar_one_or_none()
+            if yes is not None:
+                await broadcast_market_event(mid, {
+                    "type": "price", "market_id": mid,
+                    "yes": round(yes, 6), "no": round(1.0 - yes, 6),
+                })
         for mid in market_ids:
             new_alerts = await evaluate_after_trade(db, user.id, mid)
             await db.commit()

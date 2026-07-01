@@ -25,7 +25,7 @@ export default function LoginPage() {
     <div className="max-w-md mx-auto py-12 sm:py-20 px-4 sm:px-6">
       <h1 className="text-3xl font-semibold tracking-tight mb-2">Bienvenido de nuevo</h1>
       <p className="text-ink-500 dark:text-ink-400 text-sm mb-8">
-        Ingresa a tu cuenta de operaciones simuladas.
+        Ingresá a tu cuenta.
       </p>
       <form onSubmit={submit} className="space-y-4">
         <Field label="Email o usuario">

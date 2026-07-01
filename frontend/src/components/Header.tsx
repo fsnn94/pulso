@@ -8,6 +8,7 @@ import { useTheme } from "@/lib/theme";
 import { usd } from "@/lib/format";
 import { AmlBadge } from "./AmlBadge";
 import { Icon } from "./Icon";
+import { MarketSearch } from "./MarketSearch";
 
 export function Header() {
   const { user, loading, logout, refresh } = useAuth();
@@ -49,11 +50,12 @@ export function Header() {
             <NavLink href="/como-funciona">Cómo funciona</NavLink>
             {user && <NavLink href="/markets/new">Proponer</NavLink>}
             {user?.is_admin && <NavLink href="/admin">Admin</NavLink>}
-            {user?.is_admin && <NavLink href="/admin/users">Usuarios</NavLink>}
             <NavLink href="/compliance">Cumplimiento</NavLink>
           </nav>
 
-          <div className="flex-1" />
+          <div className="flex-1 hidden md:flex justify-center px-2">
+            <MarketSearch />
+          </div>
 
           {user && (
             <div className="hidden md:flex items-center gap-3 px-3 py-1.5 rounded-lg bg-ink-50 dark:bg-ink-900 border border-ink-100 dark:border-ink-800">

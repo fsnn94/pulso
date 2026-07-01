@@ -125,6 +125,8 @@ export const api = {
     if (note) p.set("note", note);
     return request<{ ok: boolean }>(`/admin/users/${userId}/aml?${p}`, { method: "POST" });
   },
+  setUserPerms: (userId: string, perms: string[]) =>
+    request<AdminUserRow>(`/admin/users/${userId}/perms`, { method: "PUT", body: JSON.stringify({ perms }) }),
   disableUser: (userId: string) =>
     request<{ ok: boolean; disabled: boolean }>(`/admin/users/${userId}/disable`, { method: "POST" }),
   enableUser: (userId: string) =>
@@ -182,11 +184,34 @@ export const api = {
 // ---------- types
 export type User = {
   id: string; email: string; handle: string; is_admin: boolean; cash: number;
+  is_superadmin?: boolean;
+  admin_perms?: string[] | null;   // null = admin legado / superadmin (acceso total)
   email_verified: boolean;
   full_name?: string | null;
   country?: string | null;
   kyc_completed_at?: string | null;
 };
+
+// Capacidades del panel de admin (deben coincidir con ADMIN_CAPABILITIES del backend).
+export const ADMIN_CAPS: { key: string; label: string; href: string }[] = [
+  { key: "markets",     label: "Mercados",      href: "/admin/markets" },
+  { key: "proposals",   label: "Propuestas",    href: "/admin/proposals" },
+  { key: "cashflow",    label: "Flujo de caja", href: "/admin/cashflow" },
+  { key: "aml",         label: "AML",           href: "/admin/aml" },
+  { key: "resolutions", label: "Resoluciones",  href: "/admin/resolutions" },
+  { key: "users",       label: "Usuarios",      href: "/admin/users" },
+];
+
+/** ¿El admin tiene la capacidad `cap`? superadmin y admin legado (perms null) = todo. */
+export function hasCap(
+  u: { is_superadmin?: boolean; admin_perms?: string[] | null } | null | undefined,
+  cap: string,
+): boolean {
+  if (!u) return false;
+  if (u.is_superadmin) return true;
+  if (u.admin_perms == null) return true;
+  return u.admin_perms.includes(cap);
+}
 export type MarketStatus = "OPEN" | "CLOSED" | "PROPOSED" | "DISPUTED" | "RESOLVED" | "VOIDED";
 export type ResolutionOutcome = "YES" | "NO" | "VOID";
 export type Market = {
@@ -323,7 +348,9 @@ export type MarketSummary = {
 export type AdminUserRow = {
   id: string; handle: string; email: string; cash: number;
   email_verified: boolean; country: string | null;
-  aml_flag: boolean; disabled: boolean; is_admin: boolean; created_at: string;
+  aml_flag: boolean; disabled: boolean; is_admin: boolean;
+  is_superadmin: boolean; admin_perms: string[] | null;
+  created_at: string;
 };
 
 export type AmlSeverity = "INFO" | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";

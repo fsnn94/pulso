@@ -9,7 +9,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
-from ..deps import get_current_user, require_admin, require_verified
+from ..deps import get_current_user, require_resolutions, require_verified
 from ..matching import resolve_market, void_market
 from ..models import (
     Market, MarketDispute, MarketStatus, ResolutionOutcome, ResolutionProposal,
@@ -26,7 +26,7 @@ user_router  = APIRouter(prefix="/markets",            tags=["resolutions"])
 
 @admin_router.get("", response_model=list[ResolutionProposalOut])
 async def list_proposals(
-    admin: Annotated[User, Depends(require_admin)],
+    admin: Annotated[User, Depends(require_resolutions)],
     db: Annotated[AsyncSession, Depends(get_db)],
     status_filter: str | None = Query(None, alias="status",
         pattern="^(PENDING|CONFIRMED|OVERRIDDEN|DISPUTED)$"),
@@ -41,7 +41,7 @@ async def list_proposals(
 
 @admin_router.get("/queue", response_model=list[ResolutionProposalOut])
 async def queue(
-    admin: Annotated[User, Depends(require_admin)],
+    admin: Annotated[User, Depends(require_resolutions)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Active queue: PENDING + DISPUTED, oldest first."""
@@ -60,7 +60,7 @@ async def queue(
 async def confirm(
     proposal_id: uuid.UUID,
     payload: ResolutionConfirmIn,
-    admin: Annotated[User, Depends(require_admin)],
+    admin: Annotated[User, Depends(require_resolutions)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """

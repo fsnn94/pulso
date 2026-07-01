@@ -13,7 +13,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
 from ..config import get_settings
-from ..deps import require_admin
+from ..deps import (
+    ADMIN_CAPABILITIES, require_cashflow, require_markets, require_proposals,
+    require_superadmin, require_users,
+)
 from ..matching import resolve_market, get_commission_rate, COMMISSION_RATE_KEY
 from ..notifications import notify
 from ..models import (
@@ -22,8 +25,8 @@ from ..models import (
     ProposalStatus, ResolutionProposal, Trade, User,
 )
 from ..schemas import (
-    AdminUserRow, CashflowKpiOut, CommissionRateIn, CommissionRow, MarketBase,
-    MarketCreateIn, MarketResolveIn, ProposalOut, ProposalReviewIn,
+    AdminPermsIn, AdminUserRow, CashflowKpiOut, CommissionRateIn, CommissionRow,
+    MarketBase, MarketCreateIn, MarketResolveIn, ProposalOut, ProposalReviewIn,
 )
 from ..ws import broadcast_market_event
 
@@ -35,7 +38,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 @router.post("/markets", response_model=MarketBase, status_code=status.HTTP_201_CREATED)
 async def create_market(
     payload: MarketCreateIn,
-    admin: Annotated[User, Depends(require_admin)],
+    admin: Annotated[User, Depends(require_markets)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     if (await db.execute(select(Market).where(Market.id == payload.id))).scalar_one_or_none():
@@ -56,7 +59,7 @@ async def create_market(
 async def resolve(
     market_id: str,
     payload: MarketResolveIn,
-    admin: Annotated[User, Depends(require_admin)],
+    admin: Annotated[User, Depends(require_markets)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     m = (await db.execute(select(Market).where(Market.id == market_id))).scalar_one_or_none()
@@ -74,7 +77,7 @@ async def resolve(
 
 @router.get("/proposals", response_model=list[ProposalOut])
 async def list_proposals(
-    admin: Annotated[User, Depends(require_admin)],
+    admin: Annotated[User, Depends(require_proposals)],
     db: Annotated[AsyncSession, Depends(get_db)],
     status_filter: str | None = Query(None, alias="status", pattern="^(PENDING|APPROVED|REJECTED)$"),
     limit: int = 100,
@@ -90,7 +93,7 @@ async def list_proposals(
 async def review_proposal(
     proposal_id: uuid.UUID,
     payload: ProposalReviewIn,
-    admin: Annotated[User, Depends(require_admin)],
+    admin: Annotated[User, Depends(require_proposals)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     p = await db.get(MarketProposal, proposal_id)
@@ -136,7 +139,7 @@ async def review_proposal(
 
 @router.get("/cashflow", response_model=CashflowKpiOut)
 async def cashflow(
-    admin: Annotated[User, Depends(require_admin)],
+    admin: Annotated[User, Depends(require_cashflow)],
     db: Annotated[AsyncSession, Depends(get_db)],
     days: int = Query(7, ge=1, le=90),
 ):
@@ -228,7 +231,7 @@ async def cashflow(
 @router.put("/commission-rate")
 async def set_commission_rate(
     payload: CommissionRateIn,
-    admin: Annotated[User, Depends(require_admin)],
+    admin: Annotated[User, Depends(require_cashflow)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     row = await db.get(AppSetting, COMMISSION_RATE_KEY)
@@ -243,7 +246,7 @@ async def set_commission_rate(
 
 @router.get("/commissions", response_model=list[CommissionRow])
 async def list_commissions(
-    admin: Annotated[User, Depends(require_admin)],
+    admin: Annotated[User, Depends(require_cashflow)],
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: int = Query(100, ge=1, le=500),
 ):
@@ -267,7 +270,7 @@ async def list_commissions(
 
 @router.get("/users", response_model=list[AdminUserRow])
 async def list_users(
-    admin: Annotated[User, Depends(require_admin)],
+    admin: Annotated[User, Depends(require_users)],
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: int = 200,
     aml_only: bool = False,
@@ -282,7 +285,7 @@ async def list_users(
 @router.post("/users/{user_id}/aml")
 async def set_aml(
     user_id: uuid.UUID,
-    admin: Annotated[User, Depends(require_admin)],
+    admin: Annotated[User, Depends(require_users)],
     db: Annotated[AsyncSession, Depends(get_db)],
     flag: bool = True,
     note: str | None = None,
@@ -300,7 +303,7 @@ async def set_aml(
 
 @router.get("/audit/export.csv")
 async def audit_export(
-    admin: Annotated[User, Depends(require_admin)],
+    admin: Annotated[User, Depends(require_cashflow)],
     db: Annotated[AsyncSession, Depends(get_db)],
     from_: datetime | None = Query(None, alias="from"),
     to: datetime | None = None,
@@ -349,7 +352,7 @@ async def audit_export(
 @router.post("/users/{user_id}/disable")
 async def disable_user(
     user_id: uuid.UUID,
-    user: Annotated[User, Depends(require_admin)],
+    user: Annotated[User, Depends(require_users)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Disable a user account. The user can no longer log in. Reversible via /enable."""
@@ -370,7 +373,7 @@ async def disable_user(
 @router.post("/users/{user_id}/enable")
 async def enable_user(
     user_id: uuid.UUID,
-    user: Annotated[User, Depends(require_admin)],
+    user: Annotated[User, Depends(require_users)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Re-enable a previously disabled user account."""
@@ -385,7 +388,7 @@ async def enable_user(
 @router.post("/users/{user_id}/verify-email")
 async def force_verify_email(
     user_id: uuid.UUID,
-    user: Annotated[User, Depends(require_admin)],
+    user: Annotated[User, Depends(require_users)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Force-mark a user's email as verified (e.g. for testing without real email)."""
@@ -401,7 +404,7 @@ async def force_verify_email(
 @router.post("/users/{user_id}/reset-cash")
 async def reset_user_cash(
     user_id: uuid.UUID,
-    user: Annotated[User, Depends(require_admin)],
+    user: Annotated[User, Depends(require_users)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Reset a user's cash to the starting credits amount."""
@@ -417,7 +420,7 @@ async def reset_user_cash(
 @router.delete("/users/{user_id}")
 async def delete_user(
     user_id: uuid.UUID,
-    user: Annotated[User, Depends(require_admin)],
+    user: Annotated[User, Depends(require_users)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Hard-delete a user. Refuses if the user has trade history (data integrity).
@@ -481,16 +484,18 @@ async def delete_user(
 @router.post("/users/{user_id}/promote-admin")
 async def promote_admin(
     user_id: uuid.UUID,
-    user: Annotated[User, Depends(require_admin)],
+    user: Annotated[User, Depends(require_superadmin)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Make a regular user an administrator."""
+    """Make a regular user an administrator. Solo el admin principal.
+    El nuevo admin arranca SIN capacidades: el superadmin se las habilita luego."""
     target = await db.get(User, user_id)
     if not target:
         raise HTTPException(404, "Usuario no encontrado")
     if target.is_admin:
         return {"ok": True, "is_admin": True}
     target.is_admin = True
+    target.admin_perms = []   # explícito: sin permisos hasta que el superadmin los otorgue
     await db.commit()
     return {"ok": True, "is_admin": True}
 
@@ -498,13 +503,15 @@ async def promote_admin(
 @router.post("/users/{user_id}/revoke-admin")
 async def revoke_admin(
     user_id: uuid.UUID,
-    user: Annotated[User, Depends(require_admin)],
+    user: Annotated[User, Depends(require_superadmin)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Revoke admin status. Refuses if it would leave 0 admins."""
+    """Revoke admin status. Solo el admin principal. Refuses if it would leave 0 admins."""
     target = await db.get(User, user_id)
     if not target:
         raise HTTPException(404, "Usuario no encontrado")
+    if target.is_superadmin:
+        raise HTTPException(409, "El admin principal se gestiona por SUPERADMIN_EMAIL, no desde acá")
     if not target.is_admin:
         return {"ok": True, "is_admin": False}
     admin_count = (await db.execute(
@@ -513,5 +520,30 @@ async def revoke_admin(
     if admin_count <= 1:
         raise HTTPException(409, "No se puede revocar al unico administrador")
     target.is_admin = False
+    target.admin_perms = None
     await db.commit()
     return {"ok": True, "is_admin": False}
+
+
+@router.put("/users/{user_id}/perms", response_model=AdminUserRow)
+async def set_admin_perms(
+    user_id: uuid.UUID,
+    payload: AdminPermsIn,
+    user: Annotated[User, Depends(require_superadmin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Habilita/deshabilita capacidades de un admin. Solo el admin principal."""
+    target = await db.get(User, user_id)
+    if not target:
+        raise HTTPException(404, "Usuario no encontrado")
+    if not target.is_admin:
+        raise HTTPException(400, "El usuario no es administrador")
+    if target.is_superadmin:
+        raise HTTPException(409, "El admin principal tiene acceso total; no se editan sus permisos")
+    invalid = [c for c in payload.perms if c not in ADMIN_CAPABILITIES]
+    if invalid:
+        raise HTTPException(422, f"Capacidades inválidas: {', '.join(invalid)}")
+    # Normaliza: sin duplicados y en el orden canónico.
+    target.admin_perms = [c for c in ADMIN_CAPABILITIES if c in payload.perms]
+    await db.commit(); await db.refresh(target)
+    return target

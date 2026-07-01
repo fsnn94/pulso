@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     price_engine_interval: float = 2.0
 
     seed_on_startup: bool = True
+    # Al arrancar, esta cuenta (por email) se marca como admin principal (superadmin).
+    # Prod-friendly: se setea en la env var SUPERADMIN_EMAIL y toma efecto en el próximo deploy.
+    superadmin_email: str = ""
     admin_email: str = "admin@pulso.local"
     admin_password: str = "admin123"
     create_default_admin: bool = False  # set true ONLY when bootstrapping a fresh DB

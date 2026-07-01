@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..aml import run_all_rules
 from ..db import get_db
-from ..deps import require_admin
+from ..deps import require_aml_cap
 from ..models import AmlAlert, AmlAlertStatus, AmlSeverity, User
 from ..schemas import AmlAlertOut, AmlAlertReviewIn, AmlSummary
 from ..ws import broadcast_market_event
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/admin/aml", tags=["aml"])
 
 @router.get("/summary", response_model=AmlSummary)
 async def aml_summary(
-    admin: Annotated[User, Depends(require_admin)],
+    admin: Annotated[User, Depends(require_aml_cap)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     open_count = int((await db.execute(
@@ -43,7 +43,7 @@ async def aml_summary(
 
 @router.get("/alerts", response_model=list[AmlAlertOut])
 async def list_alerts(
-    admin: Annotated[User, Depends(require_admin)],
+    admin: Annotated[User, Depends(require_aml_cap)],
     db: Annotated[AsyncSession, Depends(get_db)],
     status_filter: str | None = Query(None, alias="status",
                                        pattern="^(OPEN|ACKED|DISMISSED|ESCALATED)$"),
@@ -65,7 +65,7 @@ async def list_alerts(
 async def review_alert(
     alert_id: uuid.UUID,
     payload: AmlAlertReviewIn,
-    admin: Annotated[User, Depends(require_admin)],
+    admin: Annotated[User, Depends(require_aml_cap)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     a = await db.get(AmlAlert, alert_id)
@@ -93,7 +93,7 @@ async def review_alert(
 
 @router.post("/scan")
 async def trigger_scan(
-    admin: Annotated[User, Depends(require_admin)],
+    admin: Annotated[User, Depends(require_aml_cap)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Run all AML rules on demand."""
@@ -118,7 +118,7 @@ from ..schemas import AmlMuteIn, AmlMuteOut
 
 @router.get("/mutes", response_model=list[AmlMuteOut])
 async def list_mutes(
-    admin: Annotated[User, Depends(require_admin)],
+    admin: Annotated[User, Depends(require_aml_cap)],
     db: Annotated[AsyncSession, Depends(get_db)],
     active_only: bool = True,
     limit: int = 200,
@@ -137,7 +137,7 @@ async def list_mutes(
 @router.post("/mutes", response_model=AmlMuteOut)
 async def create_mute(
     payload: AmlMuteIn,
-    admin: Annotated[User, Depends(require_admin)],
+    admin: Annotated[User, Depends(require_aml_cap)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     # Block stacking: revoke any matching active mute first.
@@ -186,7 +186,7 @@ async def create_mute(
 @router.delete("/mutes/{mute_id}", response_model=AmlMuteOut)
 async def revoke_mute(
     mute_id: uuid.UUID,
-    admin: Annotated[User, Depends(require_admin)],
+    admin: Annotated[User, Depends(require_aml_cap)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     m = await db.get(AmlMute, mute_id)

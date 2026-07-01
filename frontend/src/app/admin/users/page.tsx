@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { api, AdminUserRow } from "@/lib/api";
+import { api, AdminUserRow, ADMIN_CAPS } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { usd } from "@/lib/format";
 
@@ -96,6 +96,18 @@ export default function AdminUsersPage() {
     finally { setBusy(null); }
   };
 
+  const onTogglePerm = async (u: AdminUserRow, cap: string) => {
+    // Admin legado (admin_perms null) = acceso total: partimos de todas y sacamos.
+    const effective = u.admin_perms == null ? ADMIN_CAPS.map((c) => c.key) : u.admin_perms;
+    const next = effective.includes(cap) ? effective.filter((c) => c !== cap) : [...effective, cap];
+    setBusy(u.id);
+    try {
+      const updated = await api.setUserPerms(u.id, next);
+      setUsers((cur) => cur.map((x) => (x.id === u.id ? updated : x)));
+    } catch (e: any) { alert(e?.message ?? "Falló"); }
+    finally { setBusy(null); }
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
       <div className="flex items-center justify-between mb-6">
@@ -145,10 +157,13 @@ export default function AdminUsersPage() {
           </thead>
           <tbody>
             {filtered.map((u) => (
-              <tr key={u.id} className="border-t border-ink-100 dark:border-ink-800">
+              <Fragment key={u.id}>
+              <tr className="border-t border-ink-100 dark:border-ink-800">
                 <td className="px-3 py-3 font-medium">
                   @{u.handle}
-                  {u.is_admin && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-accent-500/20 text-accent-500 font-semibold">ADMIN</span>}
+                  {u.is_superadmin
+                    ? <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-accent-500/30 text-accent-500 font-semibold">PRINCIPAL</span>
+                    : u.is_admin && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-accent-500/20 text-accent-500 font-semibold">ADMIN</span>}
                 </td>
                 <td className="px-3 py-3 text-xs">{u.email}</td>
                 <td className="px-3 py-3 text-right num">{usd(u.cash)}</td>
@@ -169,12 +184,12 @@ export default function AdminUsersPage() {
                     <ActionButton onClick={() => onResetCash(u)} busy={busy === u.id} tone="default">
                       Reset saldo
                     </ActionButton>
-                    {!u.is_admin && (
+                    {user.is_superadmin && !u.is_admin && (
                       <ActionButton onClick={() => onPromoteAdmin(u)} busy={busy === u.id} tone="yes">
                         Promover a admin
                       </ActionButton>
                     )}
-                    {u.is_admin && (
+                    {user.is_superadmin && u.is_admin && !u.is_superadmin && (
                       <ActionButton onClick={() => onRevokeAdmin(u)} busy={busy === u.id} tone="warn">
                         Revocar admin
                       </ActionButton>
@@ -195,6 +210,33 @@ export default function AdminUsersPage() {
                   </div>
                 </td>
               </tr>
+
+              {user.is_superadmin && u.is_admin && (
+                <tr className="bg-ink-50/50 dark:bg-ink-900/20">
+                  <td colSpan={6} className="px-3 pb-3 pt-0">
+                    {u.is_superadmin ? (
+                      <span className="text-[11px] text-ink-500 dark:text-ink-400">Admin principal · acceso total a todas las secciones.</span>
+                    ) : (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[11px] uppercase tracking-wider text-ink-500 dark:text-ink-400">Permisos:</span>
+                        {ADMIN_CAPS.map((c) => {
+                          const on = u.admin_perms == null || u.admin_perms.includes(c.key);
+                          return (
+                            <button key={c.key} onClick={() => onTogglePerm(u, c.key)} disabled={busy === u.id}
+                              className={`h-7 px-2.5 rounded-full text-[11px] font-medium border disabled:opacity-50 transition-colors ${on
+                                ? "bg-accent-500/15 text-accent-500 border-accent-500/30"
+                                : "bg-transparent text-ink-500 dark:text-ink-400 border-ink-200 dark:border-ink-700 hover:bg-ink-100 dark:hover:bg-ink-800"}`}>
+                              {on ? "✓ " : ""}{c.label}
+                            </button>
+                          );
+                        })}
+                        {u.admin_perms == null && <span className="text-[11px] text-ink-400 dark:text-ink-500">(admin legado: acceso total)</span>}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              )}
+              </Fragment>
             ))}
             {filtered.length === 0 && (
               <tr><td colSpan={6} className="px-3 py-8 text-center text-ink-500 dark:text-ink-400 text-sm">No hay usuarios que coincidan con el filtro.</td></tr>

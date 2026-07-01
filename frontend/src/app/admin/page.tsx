@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { hasCap } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 export default function AdminPage() {
@@ -10,26 +11,49 @@ export default function AdminPage() {
   if (!user)   return <div className="p-12 text-center text-sm text-ink-500"><Link href="/login" className="underline">Ingresa</Link> para acceder al admin.</div>;
   if (!user.is_admin) return <div className="p-12 text-center text-sm text-ink-500">Solo para admins.</div>;
 
+  const can = (cap: string) => hasCap(user, cap);
+
   return (
     <div className="view-enter max-w-7xl mx-auto px-4 sm:px-6 py-8 lg:py-12">
-      <div className="mb-6">
-        <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">Admin</h1>
-        <p className="text-ink-500 dark:text-ink-400 text-sm mt-1">Gestionar mercados, revisar propuestas, monitorear flujo de caja, exportar datos de auditoría.</p>
+      <div className="mb-6 flex items-end justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">Admin</h1>
+          <p className="text-ink-500 dark:text-ink-400 text-sm mt-1">Herramientas de administración. Ves solo las secciones habilitadas para tu cuenta.</p>
+        </div>
+        {user.is_superadmin && (
+          <span className="text-[11px] font-medium uppercase tracking-wider px-2 py-1 rounded-full bg-accent-500/10 text-accent-500">
+            Admin principal
+          </span>
+        )}
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        <Card href="/admin/markets" eyebrow="Operatoria" title="Mercados"
-              body="Ver, filtrar por categoría, ordenar por cierre, crear y resolver mercados." />
-        <Card href="/admin/proposals" eyebrow="Cola de revisión" title="Propuestas de usuarios"
-              body="Aprobar, editar o rechazar mercados entrantes." />
-        <Card href="/admin/cashflow" eyebrow="Vista en tiempo real" title="Flujo de caja y cinta en vivo"
-              body="Volumen de operaciones, P&L, export de auditoría." />
-        <Card href="/admin/aml" eyebrow="Riesgo" title="Motor de reglas AML"
-              body="Operaciones ficticias, velocidad, concentración, fraccionamiento." />
-        <Card href="/admin/resolutions" eyebrow="Ciclo de vida" title="Cola de resoluciones"
-              body="Confirmar o anular propuestas del resolutor (ventana de 24h)." />
-        <Card href="/admin/users" eyebrow="Cuentas" title="Usuarios"
-              body="Verificar, deshabilitar, roles de admin y flags AML." />
+        {can("markets") && (
+          <Card href="/admin/markets" eyebrow="Operatoria" title="Mercados"
+                body="Ver, filtrar por categoría, ordenar por cierre, crear y resolver mercados." />
+        )}
+        {can("proposals") && (
+          <Card href="/admin/proposals" eyebrow="Cola de revisión" title="Propuestas de usuarios"
+                body="Aprobar, editar o rechazar mercados entrantes." />
+        )}
+        {can("cashflow") && (
+          <Card href="/admin/cashflow" eyebrow="Vista en tiempo real" title="Flujo de caja y cinta en vivo"
+                body="Volumen de operaciones, P&L, export de auditoría." />
+        )}
+        {can("aml") && (
+          <Card href="/admin/aml" eyebrow="Riesgo" title="Motor de reglas AML"
+                body="Operaciones ficticias, velocidad, concentración, fraccionamiento." />
+        )}
+        {can("resolutions") && (
+          <Card href="/admin/resolutions" eyebrow="Ciclo de vida" title="Cola de resoluciones"
+                body="Confirmar o anular propuestas del resolutor (ventana de 24h)." />
+        )}
+        {can("users") && (
+          <Card href="/admin/users" eyebrow="Cuentas" title="Usuarios"
+                body={user.is_superadmin
+                  ? "Verificar, deshabilitar, roles de admin, permisos y flags AML."
+                  : "Verificar, deshabilitar y flags AML."} />
+        )}
         <Card href="/compliance" eyebrow="Regulatorio" title="Marco de cumplimiento (Paraguay)"
               body="Postura ante CONAJZAR / CNV / SEPRELAD." />
       </div>

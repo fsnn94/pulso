@@ -1,13 +1,40 @@
 """Idempotent seed: admin user + sample markets."""
 from __future__ import annotations
+import logging
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import get_settings
 from .models import Activity, Market, MarketStatus, Position, Side, Trade, User
 from .security import hash_password
+
+logger = logging.getLogger(__name__)
+
+
+async def ensure_superadmin(db: AsyncSession) -> None:
+    """Marca como admin principal (superadmin) a la cuenta indicada en
+    SUPERADMIN_EMAIL. Idempotente; no falla si la cuenta todavía no existe."""
+    email = get_settings().superadmin_email.strip()
+    if not email:
+        return
+    u = (await db.execute(
+        select(User).where(func.lower(User.email) == email.lower())
+    )).scalar_one_or_none()
+    if u is None:
+        logger.warning("SUPERADMIN_EMAIL=%s no corresponde a ninguna cuenta (todavía)", email)
+        return
+    changed = False
+    if not u.is_admin:
+        u.is_admin = True; changed = True
+    if not u.is_superadmin:
+        u.is_superadmin = True; changed = True
+    if u.admin_perms is not None:
+        u.admin_perms = None; changed = True  # superadmin: acceso total, sin lista
+    if changed:
+        await db.commit()
+        logger.info("Cuenta %s marcada como admin principal (superadmin)", email)
 
 
 async def seed_if_empty(db: AsyncSession) -> None:

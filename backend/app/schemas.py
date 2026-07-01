@@ -37,6 +37,8 @@ class UserOut(BaseModel):
     email: str
     handle: str
     is_admin: bool
+    is_superadmin: bool = False
+    admin_perms: list[str] | None = None   # None = admin legado / superadmin (acceso total)
     cash: float
     email_verified: bool
     full_name: str | None = None
@@ -342,7 +344,14 @@ class AdminUserRow(BaseModel):
     aml_flag: bool
     disabled: bool
     is_admin: bool
+    is_superadmin: bool = False
+    admin_perms: list[str] | None = None   # None = admin legado (acceso total)
     created_at: datetime
+
+
+class AdminPermsIn(BaseModel):
+    # Lista de capacidades habilitadas para un admin (subconjunto de ADMIN_CAPABILITIES).
+    perms: list[str]
 
 
 # ---------- AML ----------

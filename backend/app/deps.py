@@ -44,6 +44,60 @@ async def require_admin(user: Annotated[User, Depends(get_current_user)]) -> Use
     return user
 
 
+# ----- Jerarquía de admins: capacidades toggleables por el superadmin -----
+# Cada capacidad mapea a una sección del panel de admin.
+ADMIN_CAPABILITIES: tuple[str, ...] = (
+    "markets", "proposals", "cashflow", "aml", "resolutions", "users",
+)
+
+
+def has_capability(user: User, cap: str) -> bool:
+    """True si el usuario admin puede acceder a la capacidad `cap`.
+    - superadmin: siempre.
+    - admin legado (admin_perms == None): acceso total (compat hacia atrás).
+    - admin normal: solo si `cap` está en su lista de capacidades.
+    """
+    if not user.is_admin:
+        return False
+    if user.is_superadmin:
+        return True
+    if user.admin_perms is None:
+        return True
+    return cap in user.admin_perms
+
+
+def require_capability(cap: str):
+    """Factory de dependencia que exige la capacidad `cap` (o superadmin)."""
+    async def _dep(user: Annotated[User, Depends(get_current_user)]) -> User:
+        if not user.is_admin:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Se requiere acceso de admin")
+        if not has_capability(user, cap):
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "No tenés permiso para esta sección del panel.",
+            )
+        return user
+    return _dep
+
+
+require_markets     = require_capability("markets")
+require_proposals   = require_capability("proposals")
+require_cashflow    = require_capability("cashflow")
+require_aml_cap     = require_capability("aml")
+require_resolutions = require_capability("resolutions")
+require_users       = require_capability("users")
+
+
+async def require_superadmin(user: Annotated[User, Depends(get_current_user)]) -> User:
+    """Solo el admin principal: gestionar otros admins y sus permisos."""
+    if not user.is_admin or not user.is_superadmin:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Se requiere acceso de administrador principal.",
+        )
+    return user
+
+
 async def require_verified(user: Annotated[User, Depends(get_current_user)]) -> User:
     """Block trading until the user has verified their email (configurable)."""
     from .config import get_settings

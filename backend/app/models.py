@@ -79,6 +79,11 @@ class User(Base):
     handle: Mapped[str] = mapped_column(String(40), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Jerarquía de admins: el superadmin (admin principal) tiene todo y gestiona
+    # a los demás. `admin_perms` es la lista de capacidades habilitadas de un admin
+    # normal; None = admin legado con acceso total (hasta que el superadmin lo acote).
+    is_superadmin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    admin_perms: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     cash: Mapped[float] = mapped_column(Float, default=10_000.0, nullable=False)
     accepted_research_disclaimer: Mapped[bool] = mapped_column(Boolean, default=False)
     disabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)  # admin can disable accounts

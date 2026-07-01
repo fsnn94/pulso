@@ -6,7 +6,7 @@ import { api, AdminUserRow, ADMIN_CAPS } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { usd } from "@/lib/format";
 
-type Filter = "all" | "verified" | "unverified" | "disabled" | "aml";
+type Filter = "all" | "admins" | "verified" | "unverified" | "disabled" | "aml";
 
 export default function AdminUsersPage() {
   const { user, loading } = useAuth();
@@ -25,6 +25,7 @@ export default function AdminUsersPage() {
 
   const filtered = useMemo(() => {
     let xs = users;
+    if (filter === "admins")      xs = xs.filter((u) => u.is_admin || u.is_superadmin);
     if (filter === "verified")    xs = xs.filter((u) => u.email_verified && !u.disabled);
     if (filter === "unverified")  xs = xs.filter((u) => !u.email_verified);
     if (filter === "disabled")    xs = xs.filter((u) => u.disabled);
@@ -35,6 +36,8 @@ export default function AdminUsersPage() {
     }
     return xs;
   }, [users, filter, search]);
+
+  const admins = useMemo(() => users.filter((u) => u.is_admin || u.is_superadmin), [users]);
 
   if (loading) return <div className="max-w-5xl mx-auto px-6 py-12 text-sm">Cargando...</div>;
   if (!user?.is_admin) {
@@ -118,6 +121,37 @@ export default function AdminUsersPage() {
         <Link href="/admin" className="text-sm text-ink-500 dark:text-ink-400 hover:underline">← Volver al panel</Link>
       </div>
 
+      {user.is_superadmin && admins.length > 0 && (
+        <div className="rounded-xl border border-accent-500/20 bg-accent-500/[0.03] dark:bg-accent-500/5 p-5 mb-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold">Administradores ({admins.length})</h2>
+            <button onClick={() => setFilter("admins")} className="text-xs text-accent-500 hover:underline">Gestionar permisos ↓</button>
+          </div>
+          <div className="space-y-2.5">
+            {admins.map((u) => (
+              <div key={u.id} className="flex items-center gap-3 flex-wrap text-sm">
+                <Link href={`/u/${encodeURIComponent(u.handle)}`} className="font-medium hover:text-accent-500 min-w-[110px]">@{u.handle}</Link>
+                {u.is_superadmin
+                  ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent-500/30 text-accent-500 font-semibold">PRINCIPAL</span>
+                  : <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent-500/20 text-accent-500 font-semibold">ADMIN</span>}
+                <span className="text-xs text-ink-500 dark:text-ink-400 truncate hidden sm:inline">{u.email}</span>
+                <div className="flex flex-wrap gap-1 ml-auto justify-end">
+                  {u.is_superadmin || u.admin_perms == null ? (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ink-100 dark:bg-ink-800 text-ink-500 dark:text-ink-400">Todas las secciones</span>
+                  ) : u.admin_perms.length === 0 ? (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-no-500/15 text-no-500">Sin permisos</span>
+                  ) : (
+                    ADMIN_CAPS.filter((c) => u.admin_perms!.includes(c.key)).map((c) => (
+                      <span key={c.key} className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent-500/15 text-accent-500">{c.label}</span>
+                    ))
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2 mb-4 items-center">
         <input
           type="text"
@@ -126,7 +160,7 @@ export default function AdminUsersPage() {
           onChange={(e) => setSearch(e.target.value)}
           className="h-9 px-3 rounded-lg border border-ink-200 dark:border-ink-800 bg-transparent text-sm flex-1 min-w-[200px]"
         />
-        {(["all", "verified", "unverified", "disabled", "aml"] as Filter[]).map((f) => (
+        {(["all", "admins", "verified", "unverified", "disabled", "aml"] as Filter[]).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -134,7 +168,7 @@ export default function AdminUsersPage() {
               ? "bg-ink-900 text-white dark:bg-white dark:text-ink-900"
               : "bg-ink-50 dark:bg-ink-900 text-ink-700 dark:text-ink-300 hover:bg-ink-100 dark:hover:bg-ink-800"}`}
           >
-            {f === "all" ? "Todos" : f === "verified" ? "Verificados" : f === "unverified" ? "Sin verificar" : f === "disabled" ? "Deshabilitados" : "AML flag"}
+            {f === "all" ? "Todos" : f === "admins" ? "Admins" : f === "verified" ? "Verificados" : f === "unverified" ? "Sin verificar" : f === "disabled" ? "Deshabilitados" : "AML flag"}
           </button>
         ))}
       </div>

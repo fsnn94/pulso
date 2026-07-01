@@ -6,6 +6,7 @@ import { api, EquityHistory, EquityRange, Order, Portfolio } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { ValueChart } from "@/components/charts";
 import { timeAgo, usd } from "@/lib/format";
+import { isLabeledMarket, sideLabel } from "@/lib/market";
 
 const RANGES: { key: EquityRange; label: string }[] = [
   { key: "24h", label: "24h" },
@@ -79,7 +80,7 @@ export default function PortfolioPage() {
   const { user, loading } = useAuth();
   const [pf, setPf] = useState<Portfolio | null>(null);
   const [openOrders, setOpenOrders] = useState<Order[]>([]);
-  const [marketsById, setMarketsById] = useState<Record<string, { short_title: string; current_yes_price: number; category: string }>>({});
+  const [marketsById, setMarketsById] = useState<Record<string, { short_title: string; current_yes_price: number; category: string; yes_label: string; no_label: string }>>({});
   const [closing, setClosing] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
@@ -87,14 +88,14 @@ export default function PortfolioPage() {
     try {
       const [p, oo, ml] = await Promise.all([api.portfolio(), api.myOrders(true), api.listMarkets()]);
       setPf(p); setOpenOrders(oo);
-      setMarketsById(Object.fromEntries(ml.items.map((m) => [m.id, { short_title: m.short_title, current_yes_price: m.current_yes_price, category: m.category }])));
+      setMarketsById(Object.fromEntries(ml.items.map((m) => [m.id, { short_title: m.short_title, current_yes_price: m.current_yes_price, category: m.category, yes_label: m.yes_label, no_label: m.no_label }])));
     } catch {}
   };
 
   useEffect(() => { if (user) void refresh(); }, [user?.id]); // eslint-disable-line
 
   const closePosition = async (p: { id: string; market_id: string; side: "YES" | "NO"; shares: number }) => {
-    if (!confirm(`¿Cerrar posición? Vas a vender ${p.shares.toFixed(2)} contratos ${p.side} a precio de mercado.`)) return;
+    if (!confirm(`¿Cerrar posición? Vas a vender ${p.shares.toFixed(2)} contratos ${sideLabel(marketsById[p.market_id], p.side)} a precio de mercado.`)) return;
     setClosing(p.id);
     setMsg(null);
     try {
@@ -189,7 +190,7 @@ export default function PortfolioPage() {
                       <div className="text-[11px] text-ink-500 dark:text-ink-400 mt-0.5">{m?.category ?? ""}</div>
                     </Link>
                   </td>
-                  <td className={`px-3 py-3 font-medium ${p.side === "YES" ? "text-yes-500" : "text-no-500"}`}>{p.side}</td>
+                  <td className={`px-3 py-3 font-medium ${isLabeledMarket(m) ? "text-accent-500" : p.side === "YES" ? "text-yes-500" : "text-no-500"}`}>{sideLabel(m, p.side)}</td>
                   <td className="px-3 py-3 text-right num">{p.shares.toFixed(2)}</td>
                   <td className="px-3 py-3 text-right num">{(p.avg_cost * 100).toFixed(1)}¢</td>
                   <td className="px-3 py-3 text-right num">{(px * 100).toFixed(1)}¢</td>

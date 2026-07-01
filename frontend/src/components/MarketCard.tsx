@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { Market } from "@/lib/api";
 import { compact, pct, statusEs } from "@/lib/format";
+import { isLabeledMarket, sideLabel } from "@/lib/market";
 import { ProbDial, Sparkline } from "./charts";
 
 export function MarketCard({
@@ -13,6 +14,7 @@ export function MarketCard({
   change30?: number;
 }) {
   const trendUp = (change30 ?? 0) >= 0;
+  const labeled = isLabeledMarket(market);
   return (
     <Link href={`/markets/${market.id}`}
           className="group rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/40 p-5 hover:border-ink-300 dark:hover:border-ink-700 hover:shadow-sm flex flex-col">
@@ -29,16 +31,23 @@ export function MarketCard({
       <h3 className="text-[15px] leading-snug font-medium mb-4 line-clamp-3 min-h-[3.6em]">{market.title}</h3>
 
       <div className="flex items-center gap-3 mb-3">
-        <ProbDial p={market.current_yes_price} size={48} stroke={4}/>
+        <ProbDial p={market.current_yes_price} size={48} stroke={4} color={labeled ? "#A41F13" : undefined}/>
         <div>
           <div className="text-2xl font-semibold num leading-none">{pct(market.current_yes_price, 0)}</div>
-          {change30 !== undefined && (
+          {labeled ? (
+            <div className="text-[11px] num mt-1 text-accent-500 truncate max-w-[9rem]">{sideLabel(market, "YES")}</div>
+          ) : change30 !== undefined && (
             <div className={`text-xs num mt-1 ${trendUp ? "text-yes-500" : "text-no-500"}`}>
               {change30 >= 0 ? "+" : ""}{(change30 * 100).toFixed(1)}pp <span className="text-ink-400 dark:text-ink-500">30m</span>
             </div>
           )}
         </div>
-        {history && history.length > 1 && (
+        {labeled ? (
+          <div className="ml-auto text-right">
+            <div className="text-xs num text-ink-500 dark:text-ink-400 truncate max-w-[7rem]">{sideLabel(market, "NO")}</div>
+            <div className="text-sm num font-medium text-accent-500/70">{pct(1 - market.current_yes_price, 0)}</div>
+          </div>
+        ) : history && history.length > 1 && (
           <div className="ml-auto -mr-1">
             <Sparkline data={history} w={92} h={36} accent={trendUp ? "#2D6A4F" : "#A41F13"}/>
           </div>

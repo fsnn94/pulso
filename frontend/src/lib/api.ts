@@ -216,7 +216,9 @@ export type MarketStatus = "OPEN" | "CLOSED" | "PROPOSED" | "DISPUTED" | "RESOLV
 export type ResolutionOutcome = "YES" | "NO" | "VOID";
 export type Market = {
   id: string; title: string; short_title: string; description: string;
-  category: string; status: MarketStatus;
+  category: string;
+  yes_label: string; no_label: string;
+  status: MarketStatus;
   closes_at: string; closed_at?: string | null;
   current_yes_price: number;
   volume_24h: number; liquidity: number; resolution_source: string;
@@ -305,18 +307,21 @@ export type News = {
 };
 export type MarketCreateIn = {
   id: string; title: string; short_title: string; description: string;
-  category: string; closes_at: string; initial_yes_price?: number;
+  category: string; yes_label?: string; no_label?: string;
+  closes_at: string; initial_yes_price?: number;
   resolution_source?: string;
 };
 export type ProposalIn = {
   slug: string; title: string; short_title: string; description: string;
-  category: string; closes_at: string; initial_yes_price?: number;
+  category: string; yes_label?: string; no_label?: string;
+  closes_at: string; initial_yes_price?: number;
   resolution_source?: string; rationale?: string;
 };
 export type Proposal = {
   id: string; submitter_id: string; slug: string;
   title: string; short_title: string; description: string;
-  category: string; closes_at: string; initial_yes_price: number;
+  category: string; yes_label?: string; no_label?: string;
+  closes_at: string; initial_yes_price: number;
   resolution_source: string; rationale: string | null;
   status: "PENDING" | "APPROVED" | "REJECTED";
   review_note: string | null;

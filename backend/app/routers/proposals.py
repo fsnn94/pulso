@@ -40,6 +40,8 @@ async def submit_proposal(
         short_title=payload.short_title,
         description=payload.description,
         category=payload.category,
+        yes_label=payload.yes_label,
+        no_label=payload.no_label,
         closes_at=payload.closes_at,
         initial_yes_price=payload.initial_yes_price,
         resolution_source=payload.resolution_source,

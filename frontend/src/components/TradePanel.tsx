@@ -5,6 +5,7 @@ import Link from "next/link";
 import { api, Market, OrderIn } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { statusEs, usd } from "@/lib/format";
+import { isLabeledMarket, sideLabel } from "@/lib/market";
 
 type Tab = "market" | "limit";
 
@@ -25,6 +26,7 @@ export function TradePanel({ market, onTraded }: { market: Market; onTraded?: ()
   useEffect(() => { setMsg(null); }, [side, tab, market.id, amount, shares]);
 
   const px = side === "YES" ? market.current_yes_price : 1 - market.current_yes_price;
+  const labeled = isLabeledMarket(market);
 
   const summary = useMemo(() => {
     if (tab === "market") {
@@ -106,7 +108,7 @@ export function TradePanel({ market, onTraded }: { market: Market; onTraded?: ()
       <div className="rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-5 text-sm">
         <div className="font-semibold mb-2">Operar</div>
         <p className="text-ink-500 dark:text-ink-400 mb-4">
-          Ingresá para operar posiciones YES/NO en este mercado.
+          Ingresá para operar posiciones en este mercado.
         </p>
         <Link href="/login" className="block w-full h-10 grid place-items-center rounded-lg bg-ink-900 text-white dark:bg-white dark:text-ink-900 font-medium">Ingresar</Link>
         <Link href="/register" className="block w-full h-10 mt-2 grid place-items-center rounded-lg border border-ink-200 dark:border-ink-700 font-medium">Crear cuenta</Link>
@@ -157,8 +159,8 @@ export function TradePanel({ market, onTraded }: { market: Market; onTraded?: ()
       </div>
 
       <div className="grid grid-cols-2 gap-2 mb-4">
-        <SideButton selected={side === "YES"} onClick={() => setSide("YES")} label="YES" price={market.current_yes_price} accent="yes"/>
-        <SideButton selected={side === "NO"}  onClick={() => setSide("NO")}  label="NO"  price={1 - market.current_yes_price} accent="no"/>
+        <SideButton selected={side === "YES"} onClick={() => setSide("YES")} label={sideLabel(market, "YES")} price={market.current_yes_price}     accent={labeled ? "neutral" : "yes"}/>
+        <SideButton selected={side === "NO"}  onClick={() => setSide("NO")}  label={sideLabel(market, "NO")}  price={1 - market.current_yes_price} accent={labeled ? "neutral" : "no"}/>
       </div>
 
       {tab === "market" ? (
@@ -206,9 +208,9 @@ export function TradePanel({ market, onTraded }: { market: Market; onTraded?: ()
         onClick={submit}
         disabled={busy || cantAfford || summary.cost <= 0}
         className={`w-full h-11 rounded-lg font-semibold text-sm transition
-          ${side === "YES" ? "bg-yes-500 hover:bg-yes-600" : "bg-no-500 hover:bg-no-600"}
+          ${labeled ? "bg-accent-500 hover:bg-accent-600" : side === "YES" ? "bg-yes-500 hover:bg-yes-600" : "bg-no-500 hover:bg-no-600"}
           text-white disabled:opacity-40 disabled:cursor-not-allowed`}>
-        {busy ? "Enviando..." : cantAfford ? "Saldo virtual insuficiente" : `${tab === "limit" ? "Colocar límite" : "Comprar"} ${side} · ${usd(summary.cost)}`}
+        {busy ? "Enviando..." : cantAfford ? "Saldo virtual insuficiente" : `${tab === "limit" ? "Colocar límite" : "Comprar"} ${sideLabel(market, side)} · ${usd(summary.cost)}`}
       </button>
 
       {msg && (
@@ -252,13 +254,15 @@ function maxAffordable(cash: number, px: number, liquidity: number) {
 }
 
 function SideButton({ selected, onClick, label, price, accent }:
-  { selected: boolean; onClick: () => void; label: string; price: number; accent: "yes" | "no" }) {
+  { selected: boolean; onClick: () => void; label: string; price: number; accent: "yes" | "no" | "neutral" }) {
   const c = accent === "yes"
     ? selected ? "bg-yes-500 text-white border-yes-500" : "border-ink-200 dark:border-ink-800 text-yes-500 hover:border-yes-500/60"
-    : selected ? "bg-no-500 text-white border-no-500"   : "border-ink-200 dark:border-ink-800 text-no-500 hover:border-no-500/60";
+    : accent === "no"
+    ? selected ? "bg-no-500 text-white border-no-500"   : "border-ink-200 dark:border-ink-800 text-no-500 hover:border-no-500/60"
+    : selected ? "bg-accent-500 text-white border-accent-500" : "border-ink-200 dark:border-ink-800 text-accent-500 hover:border-accent-500/60";
   return (
     <button onClick={onClick} className={`h-14 rounded-lg border font-semibold transition ${c}`}>
-      <div className="text-sm leading-none">{label}</div>
+      <div className="text-sm leading-none px-1 truncate">{label}</div>
       <div className={`text-xs num mt-1 leading-none ${selected ? "opacity-90" : "text-ink-500 dark:text-ink-400"}`}>
         {(price * 100).toFixed(1)}¢
       </div>

@@ -216,11 +216,12 @@ export function Sparkline({ data, w = 120, h = 36, accent = "#A41F13" }:
   );
 }
 
-export function ProbDial({ p, size = 56, stroke = 5 }: { p: number; size?: number; stroke?: number }) {
+export function ProbDial({ p, size = 56, stroke = 5, color: colorOverride }:
+  { p: number; size?: number; stroke?: number; color?: string }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const dash = c * clamp(p, 0, 1);
-  const color = p >= 0.5 ? "#2D6A4F" : "#A41F13";
+  const color = colorOverride ?? (p >= 0.5 ? "#2D6A4F" : "#A41F13");
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
       <circle cx={size / 2} cy={size / 2} r={r}

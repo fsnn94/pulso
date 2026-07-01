@@ -24,11 +24,16 @@ export default function ProposeMarketPage() {
   const [form, setForm] = useState({
     slug: "", title: "", short_title: "", description: "",
     category: "Economics",
+    market_type: "yesno" as "yesno" | "labeled",
+    yes_label: "Sí", no_label: "No",
     closes_at: new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 16),
     initial_yes_price: 0.5,
     resolution_source: "Fuente oficial primaria",
     rationale: "",
   });
+  const labeled = form.market_type === "labeled";
+  const yesName = labeled && form.yes_label.trim() ? form.yes_label.trim() : "Sí";
+  const noName  = labeled && form.no_label.trim()  ? form.no_label.trim()  : "No";
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [mine, setMine] = useState<Proposal[]>([]);
@@ -55,7 +60,12 @@ export default function ProposeMarketPage() {
     try {
       const slug = (form.slug || form.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60)).replace(/^-|-$/g, "");
       const created = await api.submitProposal({
-        ...form, slug,
+        slug,
+        title: form.title, short_title: form.short_title, description: form.description,
+        category: form.category, rationale: form.rationale,
+        resolution_source: form.resolution_source,
+        initial_yes_price: form.initial_yes_price,
+        yes_label: yesName, no_label: noName,
         closes_at: new Date(form.closes_at).toISOString(),
       });
       setMsg({ kind: "ok", text: `¡Enviado! La propuesta "${created.title}" está pendiente de revisión por admin.` });
@@ -87,10 +97,46 @@ export default function ProposeMarketPage() {
             <input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })}
                    placeholder="ej. fed-jul-cut (a-z, 0-9, guiones)" className={inp} pattern="[a-z0-9-]{3,64}"/>
           </Field>
-          <Field label="Reglas de resolución — describe exactamente cuándo resuelve YES vs NO">
+          <Field label="Tipo de mercado">
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setForm({ ...form, market_type: "yesno" })}
+                      className={`h-14 rounded-lg border text-sm font-medium transition ${!labeled
+                        ? "border-accent-500 bg-accent-500/10 text-accent-500"
+                        : "border-ink-200 dark:border-ink-800 hover:border-ink-300"}`}>
+                Sí / No
+                <span className="block text-[11px] font-normal opacity-70">¿Sucederá algo?</span>
+              </button>
+              <button type="button" onClick={() => setForm({ ...form, market_type: "labeled" })}
+                      className={`h-14 rounded-lg border text-sm font-medium transition ${labeled
+                        ? "border-accent-500 bg-accent-500/10 text-accent-500"
+                        : "border-ink-200 dark:border-ink-800 hover:border-ink-300"}`}>
+                Dos opciones
+                <span className="block text-[11px] font-normal opacity-70">ej. Boca vs River</span>
+              </button>
+            </div>
+          </Field>
+          {labeled && (
+            <div className="grid sm:grid-cols-2 gap-4">
+              <Field label="Opción A (la que paga si ocurre)">
+                <input required maxLength={40} value={form.yes_label}
+                       onChange={(e) => setForm({ ...form, yes_label: e.target.value })}
+                       placeholder="ej. Boca" className={inp}/>
+              </Field>
+              <Field label="Opción B">
+                <input required maxLength={40} value={form.no_label}
+                       onChange={(e) => setForm({ ...form, no_label: e.target.value })}
+                       placeholder="ej. River" className={inp}/>
+              </Field>
+            </div>
+          )}
+          <Field label={labeled
+            ? `Reglas de resolución — describe cuándo gana "${yesName}" vs "${noName}"`
+            : "Reglas de resolución — describe exactamente cuándo resuelve Sí vs No"}>
             <textarea required rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
                       className={`${inp} resize-y`}
-                      placeholder="Resuelve YES si [evento verificable específico]; en caso contrario NO. Fuente: [fuente primaria]."/>
+                      placeholder={labeled
+                        ? `Resuelve a favor de "${yesName}" si [condición verificable]; a favor de "${noName}" en caso contrario. Fuente: [fuente primaria].`
+                        : "Resuelve Sí si [evento verificable específico]; en caso contrario No. Fuente: [fuente primaria]."}/>
           </Field>
           <Field label="Por qué importa este mercado (motivación opcional para el revisor)">
             <textarea rows={2} value={form.rationale} onChange={(e) => setForm({ ...form, rationale: e.target.value })}
@@ -102,7 +148,7 @@ export default function ProposeMarketPage() {
                 {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
             </Field>
-            <Field label="Precio YES inicial sugerido">
+            <Field label={`Precio inicial de "${yesName}" (0.02–0.98)`}>
               <input type="number" min="0.02" max="0.98" step="0.01" value={form.initial_yes_price}
                      onChange={(e) => setForm({ ...form, initial_yes_price: parseFloat(e.target.value) })} className={inp}/>
             </Field>

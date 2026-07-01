@@ -123,6 +123,11 @@ class Market(Base):
     short_title: Mapped[str] = mapped_column(String(160), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    # Etiquetas de los dos lados. Por defecto un mercado Sí/No; si son custom
+    # (ej. "Boca"/"River") el frontend usa colores neutros en vez de verde/rojo.
+    # El lado "YES" es el que paga $1 si el mercado resuelve a su favor.
+    yes_label: Mapped[str] = mapped_column(String(40), default="Sí", nullable=False, server_default="Sí")
+    no_label: Mapped[str] = mapped_column(String(40), default="No", nullable=False, server_default="No")
     status: Mapped[MarketStatus] = mapped_column(Enum(MarketStatus), default=MarketStatus.OPEN, index=True)
     closes_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -346,6 +351,8 @@ class MarketProposal(Base):
     short_title: Mapped[str] = mapped_column(String(160), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[str] = mapped_column(String(80), nullable=False)
+    yes_label: Mapped[str] = mapped_column(String(40), default="Sí", nullable=False, server_default="Sí")
+    no_label: Mapped[str] = mapped_column(String(40), default="No", nullable=False, server_default="No")
     closes_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     initial_yes_price: Mapped[float] = mapped_column(Float, default=0.5)
     resolution_source: Mapped[str] = mapped_column(String(255), default="Official primary source")

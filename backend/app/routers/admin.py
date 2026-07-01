@@ -46,6 +46,7 @@ async def create_market(
     m = Market(
         id=payload.id, title=payload.title, short_title=payload.short_title,
         description=payload.description, category=payload.category,
+        yes_label=payload.yes_label, no_label=payload.no_label,
         closes_at=payload.closes_at, current_yes_price=payload.initial_yes_price,
         resolution_source=payload.resolution_source, created_by=admin.id,
         status=MarketStatus.OPEN,
@@ -117,7 +118,8 @@ async def review_proposal(
 
     market = Market(
         id=p.slug, title=p.title, short_title=p.short_title, description=p.description,
-        category=p.category, closes_at=p.closes_at, current_yes_price=p.initial_yes_price,
+        category=p.category, yes_label=p.yes_label, no_label=p.no_label,
+        closes_at=p.closes_at, current_yes_price=p.initial_yes_price,
         resolution_source=p.resolution_source, created_by=p.submitter_id,
         status=MarketStatus.OPEN,
     )

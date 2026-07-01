@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api, Market, MarketCreateIn } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { statusEs, outcomeEs } from "@/lib/format";
+import { statusEs } from "@/lib/format";
+import { sideLabel } from "@/lib/market";
 
 const CATEGORIES: { value: string; label: string }[] = [
   { value: "Economics", label: "Economía" },
@@ -150,13 +151,13 @@ export default function AdminMarketsPage() {
                 </td>
                 <td className="px-3 py-3 text-ink-600 dark:text-ink-300">{CATEGORY_LABEL[m.category] ?? m.category}</td>
                 <td className="px-3 py-3 text-right num">{(m.current_yes_price * 100).toFixed(1)}¢</td>
-                <td className="px-3 py-3 text-xs">{statusEs(m.status)}{m.resolved_outcome ? ` (${outcomeEs(m.resolved_outcome)})` : ""}</td>
+                <td className="px-3 py-3 text-xs">{statusEs(m.status)}{m.resolved_outcome ? ` (${sideLabel(m, m.resolved_outcome)})` : ""}</td>
                 <td className="px-3 py-3 text-xs text-ink-500 dark:text-ink-400 num">{new Date(m.closes_at).toLocaleDateString()}</td>
                 <td className="px-5 sm:px-6 py-3 text-right whitespace-nowrap">
                   {m.status !== "RESOLVED" && (
                     <>
-                      <button onClick={() => resolve(m.id, "YES")} className="h-8 px-2.5 text-xs rounded-md bg-yes-500/15 text-yes-500 hover:bg-yes-500/25 font-medium mr-2">Resolver YES</button>
-                      <button onClick={() => resolve(m.id, "NO")}  className="h-8 px-2.5 text-xs rounded-md bg-no-500/15 text-no-500 hover:bg-no-500/25 font-medium">Resolver NO</button>
+                      <button onClick={() => resolve(m.id, "YES")} className="h-8 px-2.5 text-xs rounded-md bg-yes-500/15 text-yes-500 hover:bg-yes-500/25 font-medium mr-2">Resolver {sideLabel(m, "YES")}</button>
+                      <button onClick={() => resolve(m.id, "NO")}  className="h-8 px-2.5 text-xs rounded-md bg-no-500/15 text-no-500 hover:bg-no-500/25 font-medium">Resolver {sideLabel(m, "NO")}</button>
                     </>
                   )}
                 </td>
@@ -176,14 +177,22 @@ function CreateMarketModal({ onClose, onCreated }: { onClose: () => void; onCrea
     id: "", title: "", short_title: "", description: "",
     category: "Economics", closes_at: new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 16),
     initial_yes_price: 0.5, resolution_source: "Fuente oficial primaria",
+    yes_label: "Sí", no_label: "No",
   });
+  const [marketType, setMarketType] = useState<"yesno" | "labeled">("yesno");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const labeled = marketType === "labeled";
+  const yesName = labeled && (form.yes_label ?? "").trim() ? form.yes_label!.trim() : "Sí";
+  const noName  = labeled && (form.no_label ?? "").trim()  ? form.no_label!.trim()  : "No";
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setBusy(true); setErr(null);
     try {
-      await api.createMarket({ ...form, closes_at: new Date(form.closes_at).toISOString() });
+      await api.createMarket({
+        ...form, yes_label: yesName, no_label: noName,
+        closes_at: new Date(form.closes_at).toISOString(),
+      });
       onCreated();
     } catch (e: any) { setErr(e?.message ?? "Falló la creación"); }
     finally { setBusy(false); }
@@ -201,13 +210,27 @@ function CreateMarketModal({ onClose, onCreated }: { onClose: () => void; onCrea
           <F label="Título"><input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={inp}/></F>
           <F label="Título corto"><input required maxLength={160} value={form.short_title} onChange={(e) => setForm({ ...form, short_title: e.target.value })} className={inp}/></F>
           <F label="Descripción / reglas de resolución"><textarea required rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={`${inp} resize-y`}/></F>
+          <F label="Tipo de mercado">
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setMarketType("yesno")}
+                      className={`h-9 rounded-lg border text-sm font-medium ${!labeled ? "border-accent-500 bg-accent-500/10 text-accent-500" : "border-ink-200 dark:border-ink-800"}`}>Sí / No</button>
+              <button type="button" onClick={() => setMarketType("labeled")}
+                      className={`h-9 rounded-lg border text-sm font-medium ${labeled ? "border-accent-500 bg-accent-500/10 text-accent-500" : "border-ink-200 dark:border-ink-800"}`}>Dos opciones</button>
+            </div>
+          </F>
+          {labeled && (
+            <div className="grid grid-cols-2 gap-3">
+              <F label="Opción A (paga si ocurre)"><input required maxLength={40} value={form.yes_label ?? ""} onChange={(e) => setForm({ ...form, yes_label: e.target.value })} placeholder="ej. Boca" className={inp}/></F>
+              <F label="Opción B"><input required maxLength={40} value={form.no_label ?? ""} onChange={(e) => setForm({ ...form, no_label: e.target.value })} placeholder="ej. River" className={inp}/></F>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <F label="Categoría">
               <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={inp}>
                 {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
             </F>
-            <F label="Precio YES inicial">
+            <F label={`Precio inicial de "${yesName}"`}>
               <input type="number" min="0.02" max="0.98" step="0.01" value={form.initial_yes_price}
                      onChange={(e) => setForm({ ...form, initial_yes_price: parseFloat(e.target.value) })} className={inp}/>
             </F>

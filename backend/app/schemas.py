@@ -74,6 +74,8 @@ class MarketBase(BaseModel):
     short_title: str
     description: str
     category: str
+    yes_label: str = "Sí"
+    no_label: str = "No"
     status: MarketStatus
     closes_at: datetime
     closed_at: datetime | None = None
@@ -96,6 +98,8 @@ class MarketCreateIn(BaseModel):
     short_title: str = Field(max_length=160)
     description: str
     category: str = Field(max_length=80)
+    yes_label: str = Field(max_length=40, default="Sí")
+    no_label: str = Field(max_length=40, default="No")
     closes_at: datetime
     initial_yes_price: float = Field(ge=0.02, le=0.98, default=0.5)
     resolution_source: str = "Official primary source"
@@ -254,6 +258,8 @@ class ProposalIn(BaseModel):
     short_title: str = Field(max_length=160)
     description: str
     category: str = Field(max_length=80)
+    yes_label: str = Field(max_length=40, default="Sí")
+    no_label: str = Field(max_length=40, default="No")
     closes_at: datetime
     initial_yes_price: float = Field(ge=0.02, le=0.98, default=0.5)
     resolution_source: str = "Official primary source"
@@ -274,6 +280,8 @@ class ProposalOut(BaseModel):
     short_title: str
     description: str
     category: str
+    yes_label: str = "Sí"
+    no_label: str = "No"
     closes_at: datetime
     initial_yes_price: float
     resolution_source: str

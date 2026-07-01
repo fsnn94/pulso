@@ -10,7 +10,8 @@ import { LineChart } from "@/components/charts";
 import { TradePanel } from "@/components/TradePanel";
 import { MarketSummaryCard } from "@/components/MarketSummaryCard";
 import { Icon } from "@/components/Icon";
-import { compact, pct, timeAgo, statusEs, outcomeEs } from "@/lib/format";
+import { compact, pct, timeAgo, statusEs } from "@/lib/format";
+import { isLabeledMarket, sideLabel } from "@/lib/market";
 
 export default function MarketDetailPage() {
   const params = useParams<{ id: string }>();
@@ -45,6 +46,7 @@ export default function MarketDetailPage() {
   if (!market) return <div className="p-12 text-center text-sm text-ink-500">Cargando...</div>;
 
   const lastChange = history.length > 1 ? history[history.length - 1].p - history[0].p : 0;
+  const labeled = isLabeledMarket(market);
 
   return (
     <div className="view-enter max-w-7xl mx-auto px-4 sm:px-6 py-6 lg:py-10">
@@ -66,10 +68,16 @@ export default function MarketDetailPage() {
           <div className="mt-6 flex items-baseline gap-4 flex-wrap">
             <div className="text-5xl sm:text-6xl font-semibold num tracking-tight">{pct(market.current_yes_price, 1)}</div>
             <div className="text-sm">
-              <span className="text-ink-500 dark:text-ink-400">Probabilidad YES</span>
-              <span className={`ml-3 num font-medium ${lastChange >= 0 ? "text-yes-500" : "text-no-500"}`}>
-                {lastChange >= 0 ? "+" : ""}{(lastChange * 100).toFixed(1)}pp 30m
-              </span>
+              <span className="text-ink-500 dark:text-ink-400">Probabilidad {sideLabel(market, "YES")}</span>
+              {labeled ? (
+                <span className="ml-3 num text-ink-500 dark:text-ink-400">
+                  · {sideLabel(market, "NO")} {pct(1 - market.current_yes_price, 0)}
+                </span>
+              ) : (
+                <span className={`ml-3 num font-medium ${lastChange >= 0 ? "text-yes-500" : "text-no-500"}`}>
+                  {lastChange >= 0 ? "+" : ""}{(lastChange * 100).toFixed(1)}pp 30m
+                </span>
+              )}
             </div>
             <div className="ml-auto flex items-center gap-1.5 text-xs text-ink-500 dark:text-ink-400">
               {market.status === "OPEN" && <><span className="w-1.5 h-1.5 bg-yes-500 rounded-full livedot"/>En vivo</>}
@@ -104,8 +112,8 @@ export default function MarketDetailPage() {
             </div>
           </div>
 
-          {book && <BookView book={book} />}
-          <TradesView trades={trades} />
+          {book && <BookView book={book} market={market} />}
+          <TradesView trades={trades} market={market} />
         </div>
 
         <div className="lg:sticky lg:top-24 lg:self-start space-y-4">
@@ -135,7 +143,8 @@ function KV({ k, v, mono }: { k: string; v: string; mono?: boolean }) {
   );
 }
 
-function BookView({ book }: { book: Book }) {
+function BookView({ book, market }: { book: Book; market: Market }) {
+  const labeled = isLabeledMarket(market);
   return (
     <div className="mt-6 rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-5 sm:p-6">
       <div className="flex items-center justify-between mb-4">
@@ -143,8 +152,8 @@ function BookView({ book }: { book: Book }) {
         <span className="text-xs text-ink-500 dark:text-ink-400">Top 5 niveles</span>
       </div>
       <div className="grid sm:grid-cols-2 gap-6">
-        <Side label="Ofertas YES" data={book.yes_bids} color="text-yes-500"/>
-        <Side label="Ofertas NO"  data={book.no_bids}  color="text-no-500"/>
+        <Side label={`Ofertas ${sideLabel(market, "YES")}`} data={book.yes_bids} color={labeled ? "text-accent-500" : "text-yes-500"}/>
+        <Side label={`Ofertas ${sideLabel(market, "NO")}`}  data={book.no_bids}  color={labeled ? "text-accent-500" : "text-no-500"}/>
       </div>
     </div>
   );
@@ -171,7 +180,8 @@ function Side({ label, data, color }: { label: string; data: { price: number; si
   );
 }
 
-function TradesView({ trades }: { trades: Trade[] }) {
+function TradesView({ trades, market }: { trades: Trade[]; market: Market }) {
+  const labeled = isLabeledMarket(market);
   return (
     <div className="mt-6 rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-5 sm:p-6">
       <h2 className="font-semibold mb-3">Operaciones recientes</h2>
@@ -189,7 +199,7 @@ function TradesView({ trades }: { trades: Trade[] }) {
           ) : (
             <span className="text-ink-400 dark:text-ink-500">—</span>
           )}
-          <span className={t.side === "YES" ? "text-yes-500 font-medium" : "text-no-500 font-medium"}>{t.side}</span>
+          <span className={`font-medium ${labeled ? "text-accent-500" : t.side === "YES" ? "text-yes-500" : "text-no-500"}`}>{sideLabel(market, t.side)}</span>
           <span>{(t.price * 100).toFixed(1)}¢</span>
           <span>{t.quantity.toLocaleString()}</span>
           <span className="text-right text-ink-500 dark:text-ink-400">{timeAgo(t.created_at)}</span>
@@ -234,14 +244,18 @@ function ResolutionBanner({ market, onChange }: { market: Market; onChange?: () 
   }, [proposal?.finalizes_at]);
 
   if (market.status === "OPEN") return null;
+  const labeled = isLabeledMarket(market);
 
   if (market.status === "RESOLVED") {
-    const o = market.resolved_outcome;
+    const o = market.resolved_outcome;   // "YES" | "NO"
+    const winner = o ? sideLabel(market, o) : "";
+    const tone = labeled ? "border-accent-500/30 bg-accent-500/5"
+               : o === "YES" ? "border-yes-500/30 bg-yes-500/5" : "border-no-500/30 bg-no-500/5";
     return (
-      <div className={`mt-6 rounded-xl border p-4 ${o === "YES" ? "border-yes-500/30 bg-yes-500/5" : "border-no-500/30 bg-no-500/5"}`}>
-        <div className="text-xs uppercase tracking-wider font-semibold mb-0.5">Resuelto {o}</div>
+      <div className={`mt-6 rounded-xl border p-4 ${tone}`}>
+        <div className="text-xs uppercase tracking-wider font-semibold mb-0.5">Resuelto: {winner}</div>
         <div className="text-sm text-ink-600 dark:text-ink-300">
-          {o === "YES" ? "Los tenedores de YES recibieron $1 por contrato." : "Los tenedores de NO recibieron $1 por contrato."}
+          Los tenedores de {winner} recibieron $1 por contrato.
           {market.resolved_at && <> Liquidado el {new Date(market.resolved_at).toLocaleString()}.</>}
         </div>
       </div>
@@ -297,7 +311,7 @@ function ResolutionBanner({ market, onChange }: { market: Market; onChange?: () 
           <div className="text-sm">
             {outcome ? (
               <>
-                El resolutor propone <span className={`font-semibold ${outcome === "YES" ? "text-yes-500" : "text-no-500"}`}>{outcome}</span>{" "}
+                El resolutor propone <span className={`font-semibold ${outcome === "VOID" ? "text-ink-500" : labeled ? "text-accent-500" : outcome === "YES" ? "text-yes-500" : "text-no-500"}`}>{outcome === "VOID" ? "Nulo" : outcome === "YES" || outcome === "NO" ? sideLabel(market, outcome) : outcome}</span>{" "}
                 <span className="text-ink-500 dark:text-ink-400">según {proposal.source_name}.</span>
               </>
             ) : (

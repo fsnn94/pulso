@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import get_settings
@@ -14,8 +14,9 @@ logger = logging.getLogger(__name__)
 
 
 async def ensure_superadmin(db: AsyncSession) -> None:
-    """Marca como admin principal (superadmin) a la cuenta indicada en
-    SUPERADMIN_EMAIL. Idempotente; no falla si la cuenta todavía no existe."""
+    """Hace de SUPERADMIN_EMAIL la única fuente de verdad del admin principal:
+    marca esa cuenta como superadmin y degrada a cualquier otro superadmin.
+    Idempotente; no falla si la cuenta todavía no existe (solo avisa)."""
     email = get_settings().superadmin_email.strip()
     if not email:
         return
@@ -25,6 +26,7 @@ async def ensure_superadmin(db: AsyncSession) -> None:
     if u is None:
         logger.warning("SUPERADMIN_EMAIL=%s no corresponde a ninguna cuenta (todavía)", email)
         return
+
     changed = False
     if not u.is_admin:
         u.is_admin = True; changed = True
@@ -32,9 +34,20 @@ async def ensure_superadmin(db: AsyncSession) -> None:
         u.is_superadmin = True; changed = True
     if u.admin_perms is not None:
         u.admin_perms = None; changed = True  # superadmin: acceso total, sin lista
+
+    # Unicidad: nadie más puede ser superadmin.
+    demoted = await db.execute(
+        update(User)
+        .where(User.is_superadmin.is_(True), User.id != u.id)
+        .values(is_superadmin=False)
+    )
+    if demoted.rowcount:
+        changed = True
+        logger.info("Se degradó a %d superadmin(s) distinto(s) de %s", demoted.rowcount, email)
+
     if changed:
         await db.commit()
-        logger.info("Cuenta %s marcada como admin principal (superadmin)", email)
+        logger.info("Cuenta %s marcada como admin principal (superadmin único)", email)
 
 
 async def seed_if_empty(db: AsyncSession) -> None:

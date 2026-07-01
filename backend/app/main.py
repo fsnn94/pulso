@@ -19,7 +19,26 @@ from .seed import ensure_superadmin, purge_demo_data, seed_if_empty
 from .ws import router as ws_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+logger = logging.getLogger("pulso.startup")
 
+_WEAK_JWT_SECRETS = {"", "dev-secret-change-me", "change-me", "secret"}
+
+
+def _assert_production_safe() -> None:
+    """Guardas de producción (fail-fast). Evita arrancar con secretos inseguros.
+    En prod, seteá ENVIRONMENT=production y un JWT_SECRET fuerte (≥32 chars)."""
+    s = get_settings()
+    weak_jwt = s.jwt_secret in _WEAK_JWT_SECRETS or len(s.jwt_secret) < 32
+    if s.environment == "production":
+        if weak_jwt:
+            raise RuntimeError(
+                "JWT_SECRET inseguro o ausente en producción. Seteá un valor fuerte (≥32 chars) "
+                "en la env var JWT_SECRET. Abortando por seguridad."
+            )
+    elif weak_jwt:
+        logger.warning(
+            "JWT_SECRET usa un valor débil/por defecto. Es OK en desarrollo pero NUNCA en producción."
+        )
 
 
 def _run_alembic_upgrade() -> None:
@@ -44,6 +63,7 @@ def _run_alembic_upgrade() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _assert_production_safe()  # fail-fast: no arrancar con secretos inseguros en prod
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
@@ -89,7 +109,9 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=s.cors_origin_list or ["*"],
-        allow_credentials=True,
+        # Auth por bearer token (no cookies) → no hacen falta credenciales cross-origin.
+        # Con credentials=False, "*" es una combinación válida y segura.
+        allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
     )

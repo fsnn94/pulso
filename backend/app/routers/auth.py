@@ -54,7 +54,7 @@ async def register(payload: RegisterIn, db: Annotated[AsyncSession, Depends(get_
 
     return TokenOut(
         access_token=create_access_token(user.id, is_admin=user.is_admin, password_hash=user.password_hash),
-        verification_link=link if s.expose_verification_link_in_dev else None,
+        verification_link=link if (s.expose_verification_link_in_dev and s.environment != "production") else None,
     )
 
 
@@ -167,7 +167,7 @@ async def resend_verification(
     await send_verification_email(user, link)
     return TokenOut(
         access_token=create_access_token(user.id, is_admin=user.is_admin, password_hash=user.password_hash),
-        verification_link=link if s.expose_verification_link_in_dev else None,
+        verification_link=link if (s.expose_verification_link_in_dev and s.environment != "production") else None,
     )
 
 

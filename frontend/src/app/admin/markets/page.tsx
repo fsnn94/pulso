@@ -291,7 +291,7 @@ function CreateMarketModal({ onClose, onCreated }: { onClose: () => void; onCrea
           )}
           {resolver === "llm_search" && (
             <>
-              <p className="text-[11px] text-ink-400 dark:text-ink-500 -mt-1">Al cerrar, la IA propone el resultado leyendo las reglas; confirmás en la cola. Requiere la API key de Anthropic configurada; si no, cae a la cola manual.</p>
+              <p className="text-[11px] text-ink-400 dark:text-ink-500 -mt-1">Al cerrar, la IA <strong>busca el resultado en la web</strong> y lo propone con fuentes; confirmás en la cola. Requiere <span className="mono">LLM_RESOLVER_API_KEY</span> en Render; si no, cae a la cola manual.</p>
               <F label="Fuentes primarias (URLs separadas por coma) — opcional">
                 <input value={llmSources} onChange={(e) => setLlmSources(e.target.value)} className={inp} placeholder="conmebol.com, ..."/>
               </F>

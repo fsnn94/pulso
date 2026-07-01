@@ -180,7 +180,7 @@ function CreateMarketModal({ onClose, onCreated }: { onClose: () => void; onCrea
     yes_label: "Sí", no_label: "No",
   });
   const [marketType, setMarketType] = useState<"yesno" | "labeled">("yesno");
-  const [resolver, setResolver] = useState<"manual" | "llm_search" | "json_api">("manual");
+  const [resolver, setResolver] = useState<"manual" | "llm_search" | "json_api">("llm_search");
   const [llmSources, setLlmSources] = useState("");
   const [llmExtras, setLlmExtras] = useState("");
   const [api_url, setApiUrl] = useState("");

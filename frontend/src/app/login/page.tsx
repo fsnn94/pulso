@@ -42,6 +42,9 @@ export default function LoginPage() {
           {busy ? "Ingresando..." : "Ingresar"}
         </button>
       </form>
+      <p className="mt-3 text-sm">
+        <Link href="/forgot-password" className="text-ink-500 dark:text-ink-400 hover:text-accent-500 hover:underline">¿Olvidaste tu contraseña?</Link>
+      </p>
       <p className="mt-6 text-sm text-ink-500 dark:text-ink-400">
         ¿No tienes cuenta? <Link href="/register" className="text-accent-500 hover:underline">Crear cuenta</Link>
       </p>

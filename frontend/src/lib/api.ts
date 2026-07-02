@@ -73,6 +73,10 @@ export const api = {
   me: () => request<User>("/auth/me"),
   changePassword: (b: { current_password: string; new_password: string }) =>
     request<{ access_token: string }>("/auth/change-password", { method: "POST", body: JSON.stringify(b) }),
+  forgotPassword: (email: string) =>
+    request<{ ok: boolean; reset_link?: string | null }>("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),
+  resetPassword: (token: string, new_password: string) =>
+    request<{ access_token: string }>("/auth/reset-password", { method: "POST", body: JSON.stringify({ token, new_password }) }),
   changeHandle: (handle: string) =>
     request<User>("/auth/handle", { method: "PATCH", body: JSON.stringify({ handle }) }),
   verifyEmail: (token: string) => request<User>("/auth/verify", { method: "POST", body: JSON.stringify({ token }) }),

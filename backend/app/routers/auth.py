@@ -13,10 +13,14 @@ from ..config import get_settings
 from ..db import get_db
 from ..deps import get_current_user
 from ..ratelimit import rate_limit
-from ..email import issue_verification_token, send_verification_email, verification_link
-from ..models import EmailVerification, User
+from ..email import (
+    issue_password_reset_token, issue_verification_token, password_reset_link,
+    send_password_reset_email, send_verification_email, verification_link,
+)
+from ..models import EmailVerification, PasswordReset, User
 from ..schemas import (
-    ChangeHandleIn, ChangePasswordIn, KycIn, LoginIn, RegisterIn, TokenOut, UserOut, VerifyIn,
+    ChangeHandleIn, ChangePasswordIn, ForgotPasswordIn, ForgotPasswordOut, KycIn,
+    LoginIn, RegisterIn, ResetPasswordIn, TokenOut, UserOut, VerifyIn,
 )
 from ..security import create_access_token, hash_password, verify_password
 
@@ -129,6 +133,49 @@ async def change_handle(
     await db.commit()
     await db.refresh(user)
     return user
+
+
+# ---------- password reset (F1) ----------
+
+@router.post("/forgot-password", response_model=ForgotPasswordOut,
+             dependencies=[Depends(rate_limit("forgot-password", 5, 3600))])
+async def forgot_password(payload: ForgotPasswordIn, db: Annotated[AsyncSession, Depends(get_db)]):
+    """Inicia el reset de contraseña. Responde 200 siempre (no revela si el email
+    existe, para evitar enumeración de cuentas)."""
+    s = get_settings()
+    user = (await db.execute(
+        select(User).where(func.lower(User.email) == payload.email.lower())
+    )).scalar_one_or_none()
+    link = None
+    if user and not user.disabled:
+        token = await issue_password_reset_token(db, user)
+        await db.commit()
+        link = password_reset_link(s.frontend_base_url, token)
+        await send_password_reset_email(user, link)
+    return ForgotPasswordOut(
+        ok=True,
+        reset_link=link if (s.expose_verification_link_in_dev and s.environment != "production") else None,
+    )
+
+
+@router.post("/reset-password", response_model=TokenOut,
+             dependencies=[Depends(rate_limit("reset-password", 10, 3600))])
+async def reset_password(payload: ResetPasswordIn, db: Annotated[AsyncSession, Depends(get_db)]):
+    pr = (await db.execute(
+        select(PasswordReset).where(PasswordReset.token == payload.token)
+    )).scalar_one_or_none()
+    now = datetime.now(timezone.utc)
+    if not pr or pr.used_at is not None or pr.expires_at < now:
+        raise HTTPException(400, "El link de recuperación es inválido o expiró")
+    user = await db.get(User, pr.user_id)
+    if not user:
+        raise HTTPException(404, "Usuario no encontrado")
+    user.password_hash = hash_password(payload.new_password)
+    pr.used_at = now
+    await db.commit()
+    # Nueva contraseña → invalida sesiones previas (claim pv). Devolvemos token
+    # nuevo para que el usuario quede logueado tras el reset.
+    return TokenOut(access_token=create_access_token(user.id, is_admin=user.is_admin, password_hash=user.password_hash))
 
 
 # ---------- email verification ----------

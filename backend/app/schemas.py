@@ -55,6 +55,20 @@ class ChangePasswordIn(BaseModel):
     new_password: str = Field(min_length=6, max_length=128)
 
 
+class ForgotPasswordIn(BaseModel):
+    email: EmailStr
+
+
+class ForgotPasswordOut(BaseModel):
+    ok: bool = True
+    reset_link: str | None = None   # solo en dev; en prod nunca se expone
+
+
+class ResetPasswordIn(BaseModel):
+    token: str = Field(min_length=10, max_length=200)
+    new_password: str = Field(min_length=6, max_length=128)
+
+
 class ChangeHandleIn(BaseModel):
     handle: str = Field(min_length=2, max_length=40)
 

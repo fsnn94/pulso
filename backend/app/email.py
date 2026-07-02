@@ -14,12 +14,13 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import get_settings
-from .models import EmailVerification, User
+from .models import EmailVerification, PasswordReset, User
 
 logger = logging.getLogger(__name__)
 
 
 VERIFICATION_TTL_HOURS = 24
+PASSWORD_RESET_TTL_HOURS = 2
 SENDGRID_URL = "https://api.sendgrid.com/v3/mail/send"
 
 
@@ -86,21 +87,15 @@ def _build_verification_payload(user: User, link: str, sender: str, sender_name:
     }
 
 
-async def send_verification_email(user: User, link: str) -> None:
-    """Send the verification email — via SendGrid if configured, else log."""
+async def _deliver(user: User, payload: dict, kind: str, link: str) -> None:
+    """Envía `payload` por SendGrid si hay key; si no (dev), loguea el link."""
     s = get_settings()
     if not s.sendgrid_api_key:
         logger.info(
-            "Email verification (stub — SENDGRID_API_KEY not set)\n"
-            "  to:   %s\n  link: %s\n  user: %s",
-            user.email, link, user.handle,
+            "%s (stub — SENDGRID_API_KEY not set)\n  to:   %s\n  link: %s\n  user: %s",
+            kind, user.email, link, user.handle,
         )
         return
-
-    payload = _build_verification_payload(
-        user=user, link=link,
-        sender=s.email_from, sender_name=s.email_from_name,
-    )
     headers = {
         "Authorization": f"Bearer {s.sendgrid_api_key}",
         "Content-Type": "application/json",
@@ -109,11 +104,80 @@ async def send_verification_email(user: User, link: str) -> None:
         async with httpx.AsyncClient(timeout=10.0) as client:
             res = await client.post(SENDGRID_URL, json=payload, headers=headers)
         if res.status_code >= 400:
-            logger.error(
-                "SendGrid error %s sending to %s: %s",
-                res.status_code, user.email, res.text[:500],
-            )
+            logger.error("SendGrid error %s sending to %s: %s", res.status_code, user.email, res.text[:500])
         else:
-            logger.info("Verification email sent to %s (SendGrid %s)", user.email, res.status_code)
+            logger.info("%s sent to %s (SendGrid %s)", kind, user.email, res.status_code)
     except Exception as e:
-        logger.exception("Failed to send verification email to %s: %s", user.email, e)
+        logger.exception("Failed to send %s to %s: %s", kind, user.email, e)
+
+
+async def send_verification_email(user: User, link: str) -> None:
+    """Send the verification email — via SendGrid if configured, else log."""
+    s = get_settings()
+    payload = _build_verification_payload(
+        user=user, link=link, sender=s.email_from, sender_name=s.email_from_name,
+    )
+    await _deliver(user, payload, "Email verification", link)
+
+
+# ---------- password reset (F1) ----------
+
+async def issue_password_reset_token(db: AsyncSession, user: User) -> str:
+    """Token de un solo uso para restablecer la contraseña."""
+    token = secrets.token_urlsafe(32)
+    db.add(PasswordReset(
+        user_id=user.id, token=token,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=PASSWORD_RESET_TTL_HOURS),
+    ))
+    return token
+
+
+def password_reset_link(frontend_base: str, token: str) -> str:
+    return f"{frontend_base.rstrip('/')}/reset-password/{token}"
+
+
+def _build_password_reset_payload(user: User, link: str, sender: str, sender_name: str) -> dict:
+    subject = "Restablecé tu contraseña — Pulso"
+    text = (
+        f"¡Hola {user.handle}!\n\n"
+        f"Recibimos un pedido para restablecer tu contraseña en Pulso. "
+        f"Hacé clic en el siguiente link para elegir una nueva:\n\n"
+        f"{link}\n\n"
+        f"Este link expira en 2 horas. Si no lo pediste, ignorá este mensaje: "
+        f"tu contraseña actual sigue siendo válida.\n\n"
+        f"— El equipo de Pulso"
+    )
+    html = (
+        f"<!DOCTYPE html><html><body style=\"font-family: -apple-system, Segoe UI, Helvetica, Arial, sans-serif; "
+        f"max-width: 560px; margin: 32px auto; padding: 0 16px; color: #292F36; line-height: 1.6;\">"
+        f"<div style=\"border-bottom: 2px solid #A41F13; padding-bottom: 12px; margin-bottom: 24px;\">"
+        f"<h1 style=\"margin: 0; font-size: 24px; color: #A41F13;\">Pulso</h1></div>"
+        f"<h2 style=\"font-size: 18px; margin: 0 0 12px;\">¡Hola {user.handle}!</h2>"
+        f"<p>Recibimos un pedido para restablecer tu contraseña. Elegí una nueva con este botón:</p>"
+        f"<p style=\"text-align: center; margin: 32px 0;\">"
+        f"<a href=\"{link}\" style=\"display: inline-block; background: #A41F13; color: #FAF5F1; "
+        f"text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600;\">"
+        f"Restablecer contraseña</a></p>"
+        f"<p style=\"font-size: 13px; color: #8F7A6E;\">O copiá y pegá este link:<br>"
+        f"<a href=\"{link}\" style=\"color: #A41F13; word-break: break-all;\">{link}</a></p>"
+        f"<p style=\"font-size: 13px; color: #8F7A6E;\">Expira en 2 horas. Si no lo pediste, "
+        f"ignorá este mensaje — tu contraseña actual sigue siendo válida.</p>"
+        f"</body></html>"
+    )
+    return {
+        "personalizations": [{"to": [{"email": user.email}]}],
+        "from": {"email": sender, "name": sender_name},
+        "subject": subject,
+        "content": [
+            {"type": "text/plain", "value": text},
+            {"type": "text/html", "value": html},
+        ],
+    }
+
+
+async def send_password_reset_email(user: User, link: str) -> None:
+    s = get_settings()
+    payload = _build_password_reset_payload(
+        user=user, link=link, sender=s.email_from, sender_name=s.email_from_name,
+    )
+    await _deliver(user, payload, "Password reset", link)

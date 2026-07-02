@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import delete
 
 from .config import get_settings
-from .db import session_scope
+from .db import LOCK_SNAPSHOT, advisory_lock, session_scope
 from .equity import take_snapshots
 from .models import EquitySnapshot
 
@@ -36,10 +36,12 @@ async def snapshot_loop() -> None:
     while True:
         try:
             async with session_scope() as db:
-                n = await take_snapshots(db)
-                await _prune(db, settings.equity_snapshot_retention_days)
-                await db.commit()
-                logger.debug("equity snapshot: wrote %d rows", n)
+                async with advisory_lock(db, LOCK_SNAPSHOT) as got:
+                    if got:
+                        n = await take_snapshots(db)
+                        await _prune(db, settings.equity_snapshot_retention_days)
+                        await db.commit()
+                        logger.debug("equity snapshot: wrote %d rows", n)
         except Exception:  # pragma: no cover
             logger.exception("equity snapshot loop tick failed")
         await asyncio.sleep(interval)

@@ -32,7 +32,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import get_settings
-from .db import session_scope
+from .db import LOCK_RESOLUTION, advisory_lock, session_scope
 from .matching import resolve_market, void_market
 from .models import (
     Market, MarketStatus, Position, ResolutionOutcome, ResolutionProposal,
@@ -187,33 +187,37 @@ async def resolution_loop() -> None:
         events: list[tuple[str | None, dict]] = []
         try:
             async with session_scope() as db:
-                # 1) close expired
-                for m in await _close_expired(db):
-                    events.append((m.id, {"type": "market_closed", "market_id": m.id, "closed_at": m.closed_at.isoformat()}))
+                # Advisory lock: si otra instancia está corriendo la resolución,
+                # salteamos este tick para no pagar/finalizar dos veces.
+                async with advisory_lock(db, LOCK_RESOLUTION) as got:
+                    if got:
+                        # 1) close expired
+                        for m in await _close_expired(db):
+                            events.append((m.id, {"type": "market_closed", "market_id": m.id, "closed_at": m.closed_at.isoformat()}))
 
-                # 2) run resolvers on CLOSED markets without active proposals
-                for m in await _markets_needing_resolution(db):
-                    proposal = await _run_resolver(db, m)
-                    if proposal is None:
-                        continue
-                    events.append((m.id, {
-                        "type": "resolution_proposed",
-                        "market_id": m.id, "proposal_id": str(proposal.id),
-                        "outcome": proposal.proposed_outcome.value if proposal.proposed_outcome else None,
-                        "resolver": proposal.resolver_code, "source": proposal.source_name,
-                        "finalizes_at": proposal.finalizes_at.isoformat() if proposal.finalizes_at else None,
-                        "confidence": proposal.confidence,
-                    }))
+                        # 2) run resolvers on CLOSED markets without active proposals
+                        for m in await _markets_needing_resolution(db):
+                            proposal = await _run_resolver(db, m)
+                            if proposal is None:
+                                continue
+                            events.append((m.id, {
+                                "type": "resolution_proposed",
+                                "market_id": m.id, "proposal_id": str(proposal.id),
+                                "outcome": proposal.proposed_outcome.value if proposal.proposed_outcome else None,
+                                "resolver": proposal.resolver_code, "source": proposal.source_name,
+                                "finalizes_at": proposal.finalizes_at.isoformat() if proposal.finalizes_at else None,
+                                "confidence": proposal.confidence,
+                            }))
 
-                # 3) auto-finalize PENDING proposals past their window
-                for p, m in await _finalize_ready_proposals(db):
-                    events.append((m.id, {
-                        "type": "resolution_finalized",
-                        "market_id": m.id, "proposal_id": str(p.id),
-                        "outcome": p.confirmed_outcome.value,
-                        "via": "auto",
-                    }))
-                await db.commit()
+                        # 3) auto-finalize PENDING proposals past their window
+                        for p, m in await _finalize_ready_proposals(db):
+                            events.append((m.id, {
+                                "type": "resolution_finalized",
+                                "market_id": m.id, "proposal_id": str(p.id),
+                                "outcome": p.confirmed_outcome.value,
+                                "via": "auto",
+                            }))
+                        await db.commit()
         except Exception:
             logger.exception("resolution loop tick failed")
 

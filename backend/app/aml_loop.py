@@ -5,7 +5,7 @@ import logging
 
 from .aml import run_all_rules
 from .config import get_settings
-from .db import session_scope
+from .db import LOCK_AML, advisory_lock, session_scope
 from .models import AmlAlertStatus
 from .ws import broadcast_market_event
 
@@ -18,8 +18,11 @@ async def aml_scan_loop() -> None:
     logger.info("AML scan loop starting (every %ds)", interval)
     while True:
         try:
+            alerts = []
             async with session_scope() as db:
-                alerts = await run_all_rules(db)
+                async with advisory_lock(db, LOCK_AML) as got:
+                    if got:
+                        alerts = await run_all_rules(db)
             new_or_updated_open = [a for a in alerts if a.status == AmlAlertStatus.OPEN]
             if new_or_updated_open:
                 await broadcast_market_event(None, {

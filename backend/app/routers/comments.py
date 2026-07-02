@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..db import get_db
 from ..deps import get_current_user, require_verified
 from ..models import Market, MarketComment, User
+from ..ratelimit import rate_limit
 from ..schemas import CommentIn, CommentOut
 
 router = APIRouter(prefix="/markets", tags=["comments"])
@@ -34,7 +35,8 @@ async def list_comments(
     ]
 
 
-@router.post("/{market_id}/comments", response_model=CommentOut, status_code=201)
+@router.post("/{market_id}/comments", response_model=CommentOut, status_code=201,
+             dependencies=[Depends(rate_limit("comment", 6, 60))])
 async def post_comment(
     market_id: str,
     payload: CommentIn,

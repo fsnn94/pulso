@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..config import get_settings
 from ..db import get_db
 from ..deps import get_current_user
+from ..ratelimit import rate_limit
 from ..email import issue_verification_token, send_verification_email, verification_link
 from ..models import EmailVerification, User
 from ..schemas import (
@@ -24,7 +25,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 # ---------- register / login ----------
 
-@router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(rate_limit("register", 5, 3600))])
 async def register(payload: RegisterIn, db: Annotated[AsyncSession, Depends(get_db)]):
     s = get_settings()
     if not payload.accepted_disclaimer:
@@ -58,7 +60,8 @@ async def register(payload: RegisterIn, db: Annotated[AsyncSession, Depends(get_
     )
 
 
-@router.post("/login", response_model=TokenOut)
+@router.post("/login", response_model=TokenOut,
+             dependencies=[Depends(rate_limit("login", 10, 60))])
 async def login(payload: LoginIn, db: Annotated[AsyncSession, Depends(get_db)]):
     ident = payload.email.strip()
     res = await db.execute(
@@ -82,7 +85,8 @@ async def me(user: Annotated[User, Depends(get_current_user)]):
 HANDLE_RE = re.compile(r"^[A-Za-z0-9_]{2,40}$")
 
 
-@router.post("/change-password", response_model=TokenOut)
+@router.post("/change-password", response_model=TokenOut,
+             dependencies=[Depends(rate_limit("change-password", 10, 300))])
 async def change_password(
     payload: ChangePasswordIn,
     user: Annotated[User, Depends(get_current_user)],
@@ -153,7 +157,8 @@ async def verify_email(
     return user
 
 
-@router.post("/resend-verification", response_model=TokenOut)
+@router.post("/resend-verification", response_model=TokenOut,
+             dependencies=[Depends(rate_limit("resend-verification", 4, 3600))])
 async def resend_verification(
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],

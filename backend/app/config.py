@@ -22,9 +22,10 @@ class Settings(BaseSettings):
     tick_size: float = 0.01
 
     seed_on_startup: bool = True
-    # Datos demo (usuarios/mercados/posiciones de ejemplo). Off por defecto: la
-    # plataforma arranca limpia y los mercados se crean desde el panel de admin.
-    seed_demo_data: bool = False
+    # Datos demo (usuarios/mercados/posiciones de ejemplo). ON por ahora (fase
+    # demo/preview): se siembran al arrancar de forma idempotente, sin tocar los
+    # mercados reales. Al ir a producción real, poné SEED_DEMO_DATA=false.
+    seed_demo_data: bool = True
     # Limpieza ÚNICA de datos demo ya existentes en la base (ver seed.purge_demo_data).
     # Se corre una sola vez (marcador en app_settings). Setealo en true para el deploy
     # de limpieza y luego podés dejarlo o volverlo a false.

@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..alerts import check_price_alerts
 from ..aml import evaluate_after_trade
 from ..db import get_db
 from ..deps import get_current_user, require_kyc_approved
@@ -47,6 +48,9 @@ async def place(
                     "type": "price", "market_id": mid,
                     "yes": round(yes, 6), "no": round(1.0 - yes, 6),
                 })
+                # Alertas de precio del usuario que crucen el umbral con este trade.
+                await check_price_alerts(db, mid, yes)
+        await db.commit()
         for mid in market_ids:
             new_alerts = await evaluate_after_trade(db, user.id, mid)
             await db.commit()

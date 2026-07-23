@@ -358,6 +358,27 @@ class MarketComment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
 
 
+class AlertDirection(str, PyEnum):
+    ABOVE = "ABOVE"   # avisar cuando la prob. YES sube y cruza el umbral
+    BELOW = "BELOW"   # avisar cuando baja y cruza el umbral
+
+
+class PriceAlert(Base):
+    """Alerta de precio de un usuario sobre un mercado: se dispara (una vez) cuando
+    la probabilidad YES cruza `threshold` en la dirección elegida. Se crea con
+    create_all."""
+    __tablename__ = "price_alerts"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    market_id: Mapped[str] = mapped_column(String(64), ForeignKey("markets.id"), nullable=False, index=True)
+    direction: Mapped[AlertDirection] = mapped_column(Enum(AlertDirection), nullable=False)
+    threshold: Mapped[float] = mapped_column(Float, nullable=False)   # 0..1 (prob. YES)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
+    triggered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+
 class Watchlist(Base):
     """Mercados que un usuario sigue (favoritos). Se crea con create_all."""
     __tablename__ = "watchlist"

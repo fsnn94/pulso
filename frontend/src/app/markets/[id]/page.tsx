@@ -11,6 +11,7 @@ import { TradePanel } from "@/components/TradePanel";
 import { MarketComments } from "@/components/MarketComments";
 import { MarketSummaryCard } from "@/components/MarketSummaryCard";
 import { FollowButton } from "@/components/FollowButton";
+import { PriceAlerts } from "@/components/PriceAlerts";
 import { Icon } from "@/components/Icon";
 import { compact, fmtDate, fmtDateTime, pct, timeAgo, statusEs } from "@/lib/format";
 import { isLabeledMarket, sideLabel } from "@/lib/market";
@@ -121,6 +122,8 @@ export default function MarketDetailPage() {
             <StatBox label="Estado"      value={statusEs(market.status)}/>
             <StatBox label="Cierra"      value={fmtDate(market.closes_at)}/>
           </div>
+
+          {market.status === "OPEN" && <PriceAlerts marketId={id} currentYes={market.current_yes_price} />}
 
           <div className="mt-6 rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/30 p-5 sm:p-6">
             <h2 className="font-semibold mb-2">Sobre este mercado</h2>

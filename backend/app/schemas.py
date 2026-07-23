@@ -646,3 +646,21 @@ class KycProfileOut(BaseModel):
 
 class KycRejectIn(BaseModel):
     reason: str = Field(min_length=3, max_length=500)
+
+
+# ---------- Price alerts ----------
+class PriceAlertIn(BaseModel):
+    market_id: str = Field(max_length=64)
+    direction: Literal["ABOVE", "BELOW"]
+    threshold: float = Field(gt=0, lt=1)   # probabilidad YES (0..1)
+
+
+class PriceAlertOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    market_id: str
+    direction: str
+    threshold: float
+    active: bool
+    triggered_at: datetime | None = None
+    created_at: datetime

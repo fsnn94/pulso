@@ -140,6 +140,13 @@ export const api = {
   // notifications (item #8)
   notifications: (unread_only = false, limit = 50) =>
     request<Notification[]>(`/notifications?unread_only=${unread_only}&limit=${limit}`),
+  // Price alerts
+  myAlerts: (marketId?: string) =>
+    request<PriceAlert[]>(`/alerts${marketId ? `?market_id=${marketId}` : ""}`),
+  createAlert: (b: { market_id: string; direction: "ABOVE" | "BELOW"; threshold: number }) =>
+    request<PriceAlert>("/alerts", { method: "POST", body: JSON.stringify(b) }),
+  deleteAlert: (id: string) => request<{ ok: boolean }>(`/alerts/${id}`, { method: "DELETE" }),
+
   // Watchlist (favoritos)
   watchlist: () => request<Market[]>("/watchlist"),
   watchlistIds: () => request<string[]>("/watchlist/ids"),
@@ -312,6 +319,11 @@ export type KycProfile = {
   phone?: string | null; address?: string | null; document_type?: string | null;
   kyc_status: "NONE" | "SUBMITTED" | "UNDER_REVIEW" | "APPROVED" | "REJECTED";
   kyc_rejection_reason?: string | null; created_at: string; documents: KycDocumentMeta[];
+};
+
+export type PriceAlert = {
+  id: string; market_id: string; direction: "ABOVE" | "BELOW"; threshold: number;
+  active: boolean; triggered_at?: string | null; created_at: string;
 };
 
 // Pagos (dinero real, wallet-ready)

@@ -13,7 +13,7 @@ from ..db import get_db
 from ..deps import require_aml_cap
 from ..models import AmlAlert, AmlAlertStatus, AmlSeverity, User
 from ..schemas import AmlAlertOut, AmlAlertReviewIn, AmlSummary
-from ..ws import broadcast_market_event
+from ..ws import broadcast_admin_event
 
 router = APIRouter(prefix="/admin/aml", tags=["aml"])
 
@@ -102,7 +102,7 @@ async def trigger_scan(
     by_rule: dict[str, int] = {}
     for a in open_alerts:
         by_rule[a.rule_code] = by_rule.get(a.rule_code, 0) + 1
-    await broadcast_market_event(None, {
+    await broadcast_admin_event({
         "type": "aml_scan_complete", "open_alert_count": len(open_alerts), "by_rule": by_rule,
     })
     return {"ok": True, "affected": len(alerts), "open": len(open_alerts)}
@@ -176,7 +176,7 @@ async def create_mute(
     await db.commit()
     await db.refresh(mute)
 
-    await broadcast_market_event(None, {
+    await broadcast_admin_event({
         "type": "aml_mute_created", "user_id": str(payload.user_id),
         "rule_code": payload.rule_code, "expires_at": expires_at.isoformat() if expires_at else None,
     })
@@ -203,7 +203,7 @@ async def revoke_mute(
     ))
     await db.commit()
     await db.refresh(m)
-    await broadcast_market_event(None, {
+    await broadcast_admin_event({
         "type": "aml_mute_revoked", "user_id": str(m.user_id), "rule_code": m.rule_code,
     })
     return m

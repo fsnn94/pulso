@@ -15,8 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..db import get_db
 from ..config import get_settings
 from ..deps import (
-    ADMIN_CAPABILITIES, require_cashflow, require_markets, require_proposals,
-    require_superadmin, require_users,
+    ADMIN_CAPABILITIES, require_aml_cap, require_cashflow, require_markets,
+    require_proposals, require_superadmin, require_users,
 )
 from ..matching import resolve_market, get_commission_rate, COMMISSION_RATE_KEY
 from ..notifications import notify
@@ -382,7 +382,7 @@ async def list_users(
 @router.post("/users/{user_id}/aml")
 async def set_aml(
     user_id: uuid.UUID,
-    admin: Annotated[User, Depends(require_users)],
+    admin: Annotated[User, Depends(require_aml_cap)],
     db: Annotated[AsyncSession, Depends(get_db)],
     flag: bool = True,
     note: str | None = None,
@@ -398,14 +398,29 @@ async def set_aml(
 
 # ---------- audit export ----------
 
+def _mask_id_number(id_number: str | None, reveal: bool) -> str:
+    """Enmascara el documento (cédula/pasaporte) salvo para quien tenga permiso de
+    verlo completo. Muestra solo los últimos 3 caracteres: `***456`."""
+    if not id_number:
+        return ""
+    if reveal:
+        return id_number
+    tail = id_number[-3:]
+    return f"***{tail}"
+
+
 @router.get("/audit/export.csv")
 async def audit_export(
-    admin: Annotated[User, Depends(require_cashflow)],
+    admin: Annotated[User, Depends(require_aml_cap)],
     db: Annotated[AsyncSession, Depends(get_db)],
     from_: datetime | None = Query(None, alias="from"),
     to: datetime | None = None,
 ):
-    """Streaming regulator-ready CSV of all trades in [from, to)."""
+    """Streaming regulator-ready CSV of all trades in [from, to).
+
+    Es un artefacto de compliance (incluye datos KYC), por eso requiere la
+    capacidad `aml` — no basta con `cashflow`. El número de documento se
+    enmascara salvo para el admin principal (superadmin)."""
     from_ = from_ or (datetime.now(timezone.utc) - timedelta(days=30))
     to    = to    or datetime.now(timezone.utc)
 
@@ -433,7 +448,8 @@ async def audit_export(
         w.writerow([
             str(r.id), r.created_at.isoformat(), r.market_id, r.title, r.category,
             r.side.value, f"{r.price:.4f}", f"{r.quantity:.4f}", f"{r.price * r.quantity:.4f}",
-            r.handle, r.email, r.country or "", r.full_name or "", r.id_number or "",
+            r.handle, r.email, r.country or "", r.full_name or "",
+            _mask_id_number(r.id_number, admin.is_superadmin),
             "Y" if r.aml_flag else "N",
         ])
 

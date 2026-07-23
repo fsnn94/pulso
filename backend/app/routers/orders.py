@@ -13,7 +13,7 @@ from ..deps import get_current_user, require_verified
 from ..matching import place_order, cancel_order
 from ..models import AmlAlertStatus, Market, Order, OrderStatus, User
 from ..schemas import OrderIn, OrderOut
-from ..ws import broadcast_market_event
+from ..ws import broadcast_admin_event, broadcast_market_event
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -52,7 +52,7 @@ async def place(
             await db.commit()
             for a in new_alerts:
                 if a.status == AmlAlertStatus.OPEN:
-                    await broadcast_market_event(None, {
+                    await broadcast_admin_event({
                         "type": "aml_alert",
                         "alert_id": str(a.id), "user_id": str(a.user_id),
                         "rule_code": a.rule_code, "severity": a.severity.value,

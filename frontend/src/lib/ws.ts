@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { api } from "./api";
+import { api, tokens } from "./api";
 
 export type WsEvent =
   | { type: "hello"; channels: string[] }
@@ -10,6 +10,7 @@ export type WsEvent =
   | { type: "created"; market_id: string }
   | { type: "resolved"; market_id: string; outcome: "YES" | "NO"; positions_settled: number }
   | { type: "subscribed"; markets: string[] | null }
+  | { type: "authed"; aml: boolean }
   | { type: "pong" };
 
 export function useMarketSocket(
@@ -33,6 +34,10 @@ export function useMarketSocket(
       }
       ws.onopen = () => {
         backoff = 500;
+        // Autenticación por mensaje (no en la URL): habilita el canal de
+        // compliance (aml_*) solo si el usuario es admin con capacidad `aml`.
+        const tok = tokens.get();
+        if (tok) ws?.send(JSON.stringify({ type: "auth", token: tok }));
         if (opts.markets !== undefined) {
           ws?.send(JSON.stringify({ type: "subscribe", markets: opts.markets }));
         }

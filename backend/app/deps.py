@@ -32,6 +32,10 @@ async def get_current_user(
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Usuario no encontrado")
+    # Deshabilitar una cuenta corta su sesión activa de inmediato (no solo en el
+    # próximo login): el token vigente deja de servir apenas se marca disabled.
+    if user.disabled:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "La cuenta ha quedado inhabilitada")
     # Tie the token to the current password: changing it invalidates old tokens.
     if payload.get("pv") != password_token_version(user.password_hash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "La sesión expiró — inicia sesión nuevamente")

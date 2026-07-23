@@ -1,9 +1,12 @@
 """User portfolio + activity."""
 from __future__ import annotations
+import csv
+import io
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,7 +15,7 @@ from ..config import get_settings
 from ..db import get_db
 from ..deps import get_current_user
 from ..equity import compute_user_equity
-from ..models import Activity, Commission, EquitySnapshot, Position, User
+from ..models import Activity, Commission, EquitySnapshot, Market, Position, User
 from ..schemas import (
     ActivityOut, CalibrationOut, EquityHistoryOut, EquityPointOut, PortfolioOut, PositionOut,
 )
@@ -27,6 +30,43 @@ async def get_calibration(
 ):
     """Calibración + Brier score del usuario sobre sus mercados ya resueltos."""
     return await compute_calibration(db, user.id)
+
+
+@router.get("/export.csv")
+async def export_operations(
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Exporta el historial de operaciones del usuario (scopeado a su propia
+    cuenta) como CSV descargable."""
+    rows = (await db.execute(
+        select(Activity, Market.short_title)
+        .outerjoin(Market, Market.id == Activity.market_id)
+        .where(Activity.user_id == user.id)
+        .order_by(Activity.created_at.asc())
+    )).all()
+
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["fecha_utc", "tipo", "mercado", "lado", "cantidad", "precio", "total", "nota"])
+    for a, market_title in rows:
+        w.writerow([
+            a.created_at.isoformat(),
+            a.kind,
+            market_title or (a.market_id or ""),
+            a.side.value if a.side else "",
+            f"{a.quantity:.4f}" if a.quantity is not None else "",
+            f"{a.price:.4f}" if a.price is not None else "",
+            f"{a.total:.4f}" if a.total is not None else "",
+            a.note or "",
+        ])
+    buf.seek(0)
+    fn = f"pulso-operaciones-{user.handle}-{datetime.now(timezone.utc).date()}.csv"
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{fn}"'},
+    )
 
 
 @router.get("", response_model=PortfolioOut)

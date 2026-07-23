@@ -145,9 +145,12 @@ export default function PortfolioPage() {
           <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">Portafolio</h1>
           <p className="text-ink-500 dark:text-ink-400 mt-1 text-sm">Tus posiciones, rendimiento y actividad.</p>
         </div>
-        <Link href="/" className="h-10 px-4 grid place-items-center rounded-lg border border-ink-200 dark:border-ink-800 hover:bg-ink-50 dark:hover:bg-ink-900 text-sm font-medium">
-          Buscar mercados
-        </Link>
+        <div className="flex items-center gap-2">
+          <ExportButton/>
+          <Link href="/" className="h-10 px-4 grid place-items-center rounded-lg border border-ink-200 dark:border-ink-800 hover:bg-ink-50 dark:hover:bg-ink-900 text-sm font-medium">
+            Buscar mercados
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
@@ -313,5 +316,21 @@ function Table({ head, children }: { head: string[]; children: React.ReactNode }
         <tbody>{children}</tbody>
       </table>
     </div>
+  );
+}
+
+function ExportButton() {
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    setBusy(true);
+    try { await api.downloadOperationsCsv(); }
+    catch { /* silencioso: el navegador no descargó */ }
+    finally { setBusy(false); }
+  };
+  return (
+    <button onClick={run} disabled={busy}
+            className="h-10 px-4 rounded-lg border border-ink-200 dark:border-ink-800 hover:bg-ink-50 dark:hover:bg-ink-900 text-sm font-medium disabled:opacity-50">
+      {busy ? "Exportando..." : "Exportar CSV"}
+    </button>
   );
 }

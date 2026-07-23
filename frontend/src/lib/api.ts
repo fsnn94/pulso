@@ -131,6 +131,16 @@ export const api = {
   // portfolio
   portfolio:  () => request<Portfolio>("/portfolio"),
   calibration: () => request<Calibration>("/portfolio/calibration"),
+  downloadOperationsCsv: async () => {
+    const t = tokens.get();
+    const res = await fetch(`${API_BASE}/portfolio/export.csv`, { headers: t ? { Authorization: `Bearer ${t}` } : {} });
+    if (!res.ok) throw new ApiError("No se pudo exportar", res.status, null);
+    const url = URL.createObjectURL(await res.blob());
+    const a = document.createElement("a");
+    a.href = url; a.download = "pulso-operaciones.csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  },
   equityHistory: (range: EquityRange = "all") =>
     request<EquityHistory>(`/portfolio/history?range=${range}`),
 

@@ -130,6 +130,7 @@ export const api = {
 
   // portfolio
   portfolio:  () => request<Portfolio>("/portfolio"),
+  calibration: () => request<Calibration>("/portfolio/calibration"),
   equityHistory: (range: EquityRange = "all") =>
     request<EquityHistory>(`/portfolio/history?range=${range}`),
 
@@ -319,6 +320,12 @@ export type KycProfile = {
   phone?: string | null; address?: string | null; document_type?: string | null;
   kyc_status: "NONE" | "SUBMITTED" | "UNDER_REVIEW" | "APPROVED" | "REJECTED";
   kyc_rejection_reason?: string | null; created_at: string; documents: KycDocumentMeta[];
+};
+
+export type CalibrationBin = { lo: number; hi: number; predicted: number; actual: number; weight: number; n: number };
+export type Calibration = {
+  brier: number | null; baseline: number; forecasts: number; markets: number;
+  total_contracts: number; bins: CalibrationBin[];
 };
 
 export type PriceAlert = {

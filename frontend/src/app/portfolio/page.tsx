@@ -5,6 +5,7 @@ import Link from "next/link";
 import { api, EquityHistory, EquityRange, Order, Portfolio } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { ValueChart } from "@/components/charts";
+import { CalibrationCard } from "@/components/CalibrationCard";
 import { timeAgo, usd } from "@/lib/format";
 import { isLabeledMarket, sideLabel } from "@/lib/market";
 
@@ -162,6 +163,8 @@ export default function PortfolioPage() {
       </div>
 
       <PnlChartCard/>
+
+      <div className="mt-6"><CalibrationCard/></div>
 
       {msg && (
         <div className={`rounded-lg px-4 py-2 mb-4 text-sm border ${msg.kind === "ok"

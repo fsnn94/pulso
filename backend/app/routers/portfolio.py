@@ -7,16 +7,26 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..calibration import compute_calibration
 from ..config import get_settings
 from ..db import get_db
 from ..deps import get_current_user
 from ..equity import compute_user_equity
 from ..models import Activity, Commission, EquitySnapshot, Position, User
 from ..schemas import (
-    ActivityOut, EquityHistoryOut, EquityPointOut, PortfolioOut, PositionOut,
+    ActivityOut, CalibrationOut, EquityHistoryOut, EquityPointOut, PortfolioOut, PositionOut,
 )
 
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
+
+
+@router.get("/calibration", response_model=CalibrationOut)
+async def get_calibration(
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Calibración + Brier score del usuario sobre sus mercados ya resueltos."""
+    return await compute_calibration(db, user.id)
 
 
 @router.get("", response_model=PortfolioOut)

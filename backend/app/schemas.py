@@ -664,3 +664,22 @@ class PriceAlertOut(BaseModel):
     active: bool
     triggered_at: datetime | None = None
     created_at: datetime
+
+
+# ---------- Calibration / Brier ----------
+class CalibrationBin(BaseModel):
+    lo: float
+    hi: float
+    predicted: float
+    actual: float
+    weight: float
+    n: int
+
+
+class CalibrationOut(BaseModel):
+    brier: float | None = None        # None si no hay pronósticos resueltos
+    baseline: float = 0.25            # Brier de predecir 50% siempre
+    forecasts: int = 0                # cantidad de adquisiciones puntuadas
+    markets: int = 0                  # mercados resueltos distintos
+    total_contracts: float = 0.0
+    bins: list[CalibrationBin] = []

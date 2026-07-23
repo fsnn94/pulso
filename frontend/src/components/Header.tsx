@@ -48,7 +48,6 @@ export function Header() {
             <NavLink href="/como-funciona">Cómo funciona</NavLink>
             {user && <NavLink href="/markets/new">Proponer</NavLink>}
             {user?.is_admin && <NavLink href="/admin">Admin</NavLink>}
-            <NavLink href="/compliance">Cumplimiento</NavLink>
           </nav>
 
           <div className="flex-1 hidden md:flex justify-center px-2">

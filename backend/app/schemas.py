@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Literal, Optional
 import uuid
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from .models import (
     AmlAlertStatus, AmlSeverity, CommissionSource, OrderAction, OrderStatus, OrderType,
@@ -43,6 +43,8 @@ class UserOut(BaseModel):
     email_verified: bool
     full_name: str | None = None
     country: str | None = None
+    kyc_status: str = "NONE"
+    kyc_rejection_reason: str | None = None
     kyc_completed_at: datetime | None = None
 
 
@@ -78,6 +80,20 @@ class KycIn(BaseModel):
     country: str = Field(min_length=2, max_length=2)
     id_number: str = Field(min_length=3, max_length=40)
     date_of_birth: datetime
+    document_type: Literal["CEDULA", "PASSPORT"] = "CEDULA"
+
+    @field_validator("date_of_birth")
+    @classmethod
+    def _valid_dob(cls, v: datetime) -> datetime:
+        # Primera barrera de +18 (la fuente de verdad es el chequeo de backend en
+        # /auth/kyc contra la fecha real del documento).
+        from .kyc import age_years
+        age = age_years(v)
+        if age < 0 or age > 120:
+            raise ValueError("Fecha de nacimiento inválida")
+        if age < 18:
+            raise ValueError("Debes ser mayor de 18 años para operar")
+        return v
 
 
 # ---------- Markets ----------

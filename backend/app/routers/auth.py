@@ -17,7 +17,11 @@ from ..email import (
     issue_password_reset_token, issue_verification_token, password_reset_link,
     send_password_reset_email, send_verification_email, verification_link,
 )
-from ..models import EmailVerification, PasswordReset, User
+from ..kyc import age_years, normalize_id_number
+from ..models import (
+    AmlAlert, AmlAlertStatus, AmlSeverity, DocumentType, EmailVerification,
+    KycStatus, PasswordReset, User,
+)
 from ..schemas import (
     ChangeHandleIn, ChangePasswordIn, ForgotPasswordIn, ForgotPasswordOut, KycIn,
     LoginIn, RegisterIn, ResetPasswordIn, TokenOut, UserOut, VerifyIn,
@@ -231,10 +235,41 @@ async def submit_kyc(
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
+    """Registra el perfil de identidad. Reglas DURAS (backend = fuente de verdad,
+    nunca el frontend):
+      1. +18 a partir de la fecha de nacimiento.
+      2. Unicidad de documento: una cédula/pasaporte = una sola cuenta.
+    Nota: sin extracción de la foto todavía, el punto de registro es este submit;
+    la foto + OCR + aprobación por admin son el próximo incremento (deja el estado
+    en SUBMITTED). Ver docs/arquitectura-pagos-kyc.md."""
+    # 1. Mayoría de edad (revalidado en backend, no solo en el schema).
+    if age_years(payload.date_of_birth) < 18:
+        raise HTTPException(403, "Debes ser mayor de 18 años para completar la verificación.")
+
+    # 2. Unicidad del documento entre cuentas.
+    normalized = normalize_id_number(payload.id_number, payload.country)
+    clash = (await db.execute(
+        select(User).where(User.id_number_normalized == normalized, User.id != user.id)
+    )).scalar_one_or_none()
+    if clash:
+        # Documento ya usado por otra cuenta → posible multi-cuenta/fraude: alerta AML.
+        db.add(AmlAlert(
+            user_id=user.id, rule_code="DUPLICATE_ID", severity=AmlSeverity.HIGH,
+            message="Intento de registrar un documento ya asociado a otra cuenta.",
+            evidence={"conflicting_user_id": str(clash.id), "id_number_normalized": normalized},
+            status=AmlAlertStatus.OPEN, dedup_key=normalized,
+        ))
+        await db.commit()
+        raise HTTPException(409, "Este documento ya está registrado en otra cuenta.")
+
     user.full_name = payload.full_name.strip()
     user.country = payload.country.upper()
     user.id_number = payload.id_number.strip()
+    user.id_number_normalized = normalized
+    user.document_type = DocumentType[payload.document_type]
     user.date_of_birth = payload.date_of_birth
+    user.kyc_status = KycStatus.SUBMITTED
+    user.kyc_rejection_reason = None
     user.kyc_completed_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(user)

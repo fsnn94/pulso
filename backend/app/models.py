@@ -71,6 +71,25 @@ class ResolutionProposalStatus(str, PyEnum):
     DISPUTED   = "DISPUTED"    # at least one user dispute — needs admin attention
 
 
+class KycStatus(str, PyEnum):
+    NONE         = "NONE"          # sin iniciar
+    SUBMITTED    = "SUBMITTED"     # datos/documento enviados, sin validar
+    UNDER_REVIEW = "UNDER_REVIEW"  # requiere revisión manual del admin
+    APPROVED     = "APPROVED"      # identidad verificada (persona única, +18)
+    REJECTED     = "REJECTED"      # rechazado (ver kyc_rejection_reason)
+
+
+class DocumentType(str, PyEnum):
+    CEDULA   = "CEDULA"
+    PASSPORT = "PASSPORT"
+
+
+class KycDocumentSide(str, PyEnum):
+    FRONT  = "FRONT"
+    BACK   = "BACK"
+    SELFIE = "SELFIE"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -96,7 +115,17 @@ class User(Base):
     full_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
     country: Mapped[str | None] = mapped_column(String(2), nullable=True)        # ISO 3166-1 alpha-2 (e.g. PY)
     id_number: Mapped[str | None] = mapped_column(String(40), nullable=True)     # cédula / passport
+    # Clave de unicidad: id_number sin puntos/espacios/guiones, upper, prefijado
+    # por país (ej. "PY:1234567"). UNIQUE → una persona (documento) = una cuenta.
+    id_number_normalized: Mapped[str | None] = mapped_column(
+        String(60), nullable=True, unique=True, index=True,
+    )
+    document_type: Mapped[DocumentType | None] = mapped_column(Enum(DocumentType), nullable=True)
     date_of_birth: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    kyc_status: Mapped[KycStatus] = mapped_column(
+        Enum(KycStatus), default=KycStatus.NONE, nullable=False, server_default="NONE",
+    )
+    kyc_rejection_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     kyc_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     aml_flag: Mapped[bool] = mapped_column(Boolean, default=False)               # set by ops on suspicious activity
     aml_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -126,6 +155,38 @@ class PasswordReset(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class KycDocument(Base):
+    """Imagen de un documento de identidad (cédula/pasaporte/selfie). El binario
+    NO se guarda acá: `storage_key` es un puntero a un object storage PRIVADO.
+    Se crea con create_all."""
+    __tablename__ = "kyc_documents"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    side: Mapped[KycDocumentSide] = mapped_column(Enum(KycDocumentSide), nullable=False)
+    storage_key: Mapped[str] = mapped_column(String(255), nullable=False)   # puntero a storage privado
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)   # SHA-256 hex (integridad/dedup)
+    content_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+
+class KycExtraction(Base):
+    """Datos leídos de un documento por OCR/visión, para cotejar con lo declarado.
+    Se crea con create_all."""
+    __tablename__ = "kyc_extractions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    raw: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    extracted_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    extracted_id_number: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    extracted_dob: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    extracted_expiry: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    confidence: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    name_match: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
 
 
 class Market(Base):

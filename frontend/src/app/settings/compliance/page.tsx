@@ -15,10 +15,14 @@ export default function KycPage() {
   const { user, loading, refresh } = useAuth();
   const [form, setForm] = useState({
     full_name: "", country: "PY", id_number: "",
-    date_of_birth: "1990-01-01",
+    date_of_birth: "1990-01-01", document_type: "CEDULA" as "CEDULA" | "PASSPORT",
   });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+
+  // Edad calculada en cliente (aviso; la regla dura la aplica el backend).
+  const age = ageFrom(form.date_of_birth);
+  const underage = age !== null && age < 18;
 
   if (loading) return <div className="p-12 text-center text-sm text-ink-500">Cargando...</div>;
   if (!user) {
@@ -28,13 +32,16 @@ export default function KycPage() {
   }
 
   const submit = async (e: React.FormEvent) => {
-    e.preventDefault(); setBusy(true); setMsg(null);
+    e.preventDefault();
+    if (underage) { setMsg({ kind: "err", text: "Debes ser mayor de 18 años." }); return; }
+    setBusy(true); setMsg(null);
     try {
       await api.submitKyc({
         full_name: form.full_name.trim(),
         country: form.country,
         id_number: form.id_number.trim(),
         date_of_birth: new Date(form.date_of_birth).toISOString(),
+        document_type: form.document_type,
       });
       await refresh();
       setMsg({ kind: "ok", text: "Perfil de cumplimiento guardado. Gracias." });
@@ -53,30 +60,46 @@ export default function KycPage() {
 
       <div className="mt-4 mb-6 grid grid-cols-2 gap-2 text-xs">
         <Status label="Email verificado" ok={user.email_verified}/>
-        <Status label="KYC enviado" ok={!!user.kyc_completed_at}/>
+        <Status label={`Verificación: ${kycStatusLabel(user.kyc_status)}`} ok={user.kyc_status === "APPROVED"}/>
       </div>
+      {user.kyc_status === "REJECTED" && user.kyc_rejection_reason && (
+        <div className="mb-6 text-sm rounded-md px-3 py-2 bg-no-500/10 text-no-500">
+          Verificación rechazada: {user.kyc_rejection_reason}
+        </div>
+      )}
 
       <form onSubmit={submit} className="space-y-4">
         <Field label="Nombre legal completo">
           <input required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className={inp}/>
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="País (ISO alpha-2)">
+          <Field label="Tipo de documento">
+            <select value={form.document_type} onChange={(e) => setForm({ ...form, document_type: e.target.value as "CEDULA" | "PASSPORT" })} className={inp}>
+              <option value="CEDULA">Cédula de identidad</option>
+              <option value="PASSPORT">Pasaporte</option>
+            </select>
+          </Field>
+          <Field label="País emisor (ISO alpha-2)">
             <select value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} className={inp}>
               {COUNTRIES.map(([k, n]) => <option key={k} value={k}>{n}</option>)}
             </select>
           </Field>
-          <Field label="Número de documento (CI / pasaporte)">
-            <input required value={form.id_number} onChange={(e) => setForm({ ...form, id_number: e.target.value })} className={inp}/>
-          </Field>
         </div>
+        <Field label="Número de documento">
+          <input required value={form.id_number} onChange={(e) => setForm({ ...form, id_number: e.target.value })} className={inp}/>
+        </Field>
         <Field label="Fecha de nacimiento">
           <input required type="date" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} className={inp}/>
+          <span className={`block text-xs mt-1 ${underage ? "text-no-500" : "text-ink-500 dark:text-ink-400"}`}>
+            {age === null ? "Ingresa tu fecha de nacimiento." : underage
+              ? `Debes ser mayor de 18 años (tenés ${age}).`
+              : `Edad: ${age} años ✓`}
+          </span>
         </Field>
         {msg && (
           <div className={`text-sm rounded-md px-3 py-2 ${msg.kind === "ok" ? "bg-yes-500/10 text-yes-500" : "bg-no-500/10 text-no-500"}`}>{msg.text}</div>
         )}
-        <button type="submit" disabled={busy}
+        <button type="submit" disabled={busy || underage}
                 className="h-11 px-5 rounded-lg bg-ink-900 text-white dark:bg-white dark:text-ink-900 font-medium disabled:opacity-50">
           {busy ? "Guardando..." : "Guardar perfil de cumplimiento"}
         </button>
@@ -100,4 +123,25 @@ function Status({ label, ok }: { label: string; ok: boolean }) {
 const inp = "w-full h-10 px-3 rounded-lg border border-ink-200 dark:border-ink-800 bg-transparent text-sm";
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <label className="block"><span className="block text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">{label}</span>{children}</label>;
+}
+
+function ageFrom(dateStr: string): number | null {
+  if (!dateStr) return null;
+  const dob = new Date(dateStr);
+  if (isNaN(dob.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - dob.getFullYear();
+  const m = now.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
+  return age;
+}
+
+function kycStatusLabel(status?: string): string {
+  switch (status) {
+    case "APPROVED": return "aprobada";
+    case "SUBMITTED": return "enviada";
+    case "UNDER_REVIEW": return "en revisión";
+    case "REJECTED": return "rechazada";
+    default: return "sin iniciar";
+  }
 }

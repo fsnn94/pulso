@@ -81,7 +81,7 @@ export const api = {
     request<User>("/auth/handle", { method: "PATCH", body: JSON.stringify({ handle }) }),
   verifyEmail: (token: string) => request<User>("/auth/verify", { method: "POST", body: JSON.stringify({ token }) }),
   resendVerification: () => request<{ access_token: string; verification_link?: string | null }>("/auth/resend-verification", { method: "POST" }),
-  submitKyc: (b: { full_name: string; country: string; id_number: string; date_of_birth: string }) =>
+  submitKyc: (b: { full_name: string; country: string; id_number: string; date_of_birth: string; document_type?: "CEDULA" | "PASSPORT" }) =>
     request<User>("/auth/kyc", { method: "POST", body: JSON.stringify(b) }),
 
   // markets
@@ -226,6 +226,8 @@ export type User = {
   email_verified: boolean;
   full_name?: string | null;
   country?: string | null;
+  kyc_status?: "NONE" | "SUBMITTED" | "UNDER_REVIEW" | "APPROVED" | "REJECTED";
+  kyc_rejection_reason?: string | null;
   kyc_completed_at?: string | null;
 };
 

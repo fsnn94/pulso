@@ -12,7 +12,7 @@ from .config import get_settings
 from .db import Base, engine, session_scope
 from .resolution_loop import resolution_loop
 from .snapshot_loop import snapshot_loop
-from .routers import admin, auth, comments, leaderboard, markets, news, notifications, orders, payments, portfolio, proposals, users
+from .routers import admin, auth, comments, leaderboard, markets, news, notifications, orders, payments, portfolio, proposals, users, watchlist
 from .routers import aml as aml_router
 from .routers import kyc as kyc_router
 from .routers import resolutions as resolutions_router
@@ -127,6 +127,7 @@ def create_app() -> FastAPI:
     app.include_router(comments.router)
     app.include_router(news.router)
     app.include_router(notifications.router)
+    app.include_router(watchlist.router)
     app.include_router(admin.router)
     app.include_router(payments.router)
     app.include_router(payments.admin_router)

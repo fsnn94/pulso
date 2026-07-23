@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api, Market } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -33,6 +33,21 @@ export default function HomePage() {
 
   // Track per-market price history client-side from WS feed
   const [history, setHistory] = useState<Record<string, { t: number; p: number }[]>>({});
+
+  // Watchlist (favoritos) del usuario
+  const [watched, setWatched] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!user) { setWatched(new Set()); return; }
+    api.watchlistIds().then((ids) => setWatched(new Set(ids))).catch(() => {});
+  }, [user?.id]);
+  const toggleWatch = useCallback((id: string) => {
+    setWatched((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) { next.delete(id); api.removeWatch(id).catch(() => {}); }
+      else { next.add(id); api.addWatch(id).catch(() => {}); }
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     let cancel = false;
@@ -106,7 +121,8 @@ export default function HomePage() {
         {markets.map((m) => {
           const hist = history[m.id] ?? [];
           const change30 = hist.length > 1 ? hist[hist.length - 1].p - hist[Math.max(0, hist.length - 30)].p : 0;
-          return <MarketCard key={m.id} market={m} history={hist} change30={change30}/>;
+          return <MarketCard key={m.id} market={m} history={hist} change30={change30}
+                             watched={watched.has(m.id)} onToggleWatch={user ? toggleWatch : undefined}/>;
         })}
       </div>
     );

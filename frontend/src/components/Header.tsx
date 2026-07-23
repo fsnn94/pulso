@@ -100,6 +100,8 @@ export function Header() {
                 <div className="absolute right-0 mt-2 w-48 rounded-lg border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900 shadow-lg overflow-hidden">
                   <Link href="/portfolio" onClick={() => setMenu(false)}
                         className="block px-3 py-2 text-sm hover:bg-ink-50 dark:hover:bg-ink-800">Mi portafolio</Link>
+                  <Link href="/watchlist" onClick={() => setMenu(false)}
+                        className="block px-3 py-2 text-sm hover:bg-ink-50 dark:hover:bg-ink-800">Siguiendo</Link>
                   <Link href={`/u/${encodeURIComponent(user.handle)}`} onClick={() => setMenu(false)}
                         className="block px-3 py-2 text-sm hover:bg-ink-50 dark:hover:bg-ink-800">Mi perfil público</Link>
                   <Link href="/notifications" onClick={() => setMenu(false)}

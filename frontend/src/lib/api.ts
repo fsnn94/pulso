@@ -140,6 +140,12 @@ export const api = {
   // notifications (item #8)
   notifications: (unread_only = false, limit = 50) =>
     request<Notification[]>(`/notifications?unread_only=${unread_only}&limit=${limit}`),
+  // Watchlist (favoritos)
+  watchlist: () => request<Market[]>("/watchlist"),
+  watchlistIds: () => request<string[]>("/watchlist/ids"),
+  addWatch: (marketId: string) => request<{ watching: boolean }>(`/watchlist/${marketId}`, { method: "POST" }),
+  removeWatch: (marketId: string) => request<{ watching: boolean }>(`/watchlist/${marketId}`, { method: "DELETE" }),
+
   unreadCount: () => request<{ unread: number }>("/notifications/unread-count"),
   markAllRead: () => request<{ ok: boolean }>("/notifications/read-all", { method: "POST" }),
   markRead: (id: string) => request<Notification>(`/notifications/${id}/read`, { method: "POST" }),

@@ -358,6 +358,20 @@ class MarketComment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
 
 
+class Watchlist(Base):
+    """Mercados que un usuario sigue (favoritos). Se crea con create_all."""
+    __tablename__ = "watchlist"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    market_id: Mapped[str] = mapped_column(String(64), ForeignKey("markets.id"), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+    __table_args__ = (
+        Index("ix_watchlist_user_market", "user_id", "market_id", unique=True),
+    )
+
+
 class AppSetting(Base):
     """Mutable runtime settings editable from the admin UI (e.g. commission rate).
     Key/value for forward-compat; seeded lazily from config defaults."""

@@ -7,26 +7,40 @@ import { isLabeledMarket, sideLabel } from "@/lib/market";
 import { ProbDial, Sparkline } from "./charts";
 
 export function MarketCard({
-  market, history, change30,
+  market, history, change30, watched, onToggleWatch,
 }: {
   market: Market;
   history?: { t: number; p: number }[];
   change30?: number;
+  watched?: boolean;
+  onToggleWatch?: (marketId: string) => void;
 }) {
   const trendUp = (change30 ?? 0) >= 0;
   const labeled = isLabeledMarket(market);
   return (
     <Link href={`/markets/${market.id}`}
-          className="group rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/40 p-5 hover:border-ink-300 dark:hover:border-ink-700 hover:shadow-sm flex flex-col">
+          className="group relative rounded-xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900/40 p-5 hover:border-ink-300 dark:hover:border-ink-700 hover:shadow-sm flex flex-col">
       <div className="flex items-start justify-between gap-3 mb-3">
         <span className="text-[10px] font-medium uppercase tracking-wider px-2 py-1 rounded bg-ink-50 dark:bg-ink-800 text-ink-500 dark:text-ink-400">
           {market.category}
         </span>
-        {market.status !== "OPEN" && (
-          <span className="text-[10px] font-medium uppercase tracking-wider px-2 py-1 rounded bg-ink-100 dark:bg-ink-800 text-ink-700 dark:text-ink-300">
-            {statusEs(market.status)}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {market.status !== "OPEN" && (
+            <span className="text-[10px] font-medium uppercase tracking-wider px-2 py-1 rounded bg-ink-100 dark:bg-ink-800 text-ink-700 dark:text-ink-300">
+              {statusEs(market.status)}
+            </span>
+          )}
+          {onToggleWatch && (
+            <button
+              type="button"
+              aria-label={watched ? "Dejar de seguir" : "Seguir"}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleWatch(market.id); }}
+              className={`text-base leading-none transition ${watched ? "text-accent-500" : "text-ink-300 dark:text-ink-600 hover:text-accent-500"}`}
+            >
+              {watched ? "★" : "☆"}
+            </button>
+          )}
+        </div>
       </div>
       <h3 className="text-[15px] leading-snug font-medium mb-4 line-clamp-3 min-h-[3.6em]">{market.title}</h3>
 

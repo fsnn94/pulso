@@ -27,9 +27,100 @@ export default function SettingsPage() {
         </p>
       </div>
 
+      <VerificationCard
+        emailVerified={user.email_verified}
+        kycStatus={user.kyc_status ?? "NONE"}
+        rejectionReason={user.kyc_rejection_reason ?? null}
+        onChanged={refresh}
+      />
       <HandleCard currentHandle={user.handle} onChanged={refresh} />
       <PasswordCard />
       <ExternalAccountsCard />
+    </div>
+  );
+}
+
+function VerificationCard({ emailVerified, kycStatus, rejectionReason, onChanged }: {
+  emailVerified: boolean; kycStatus: string; rejectionReason: string | null; onChanged: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<Msg>(null);
+
+  const kycDone = kycStatus === "APPROVED";
+  const kycPending = kycStatus === "SUBMITTED" || kycStatus === "UNDER_REVIEW";
+  const allDone = emailVerified && kycDone;
+
+  const resend = async () => {
+    setBusy(true); setMsg(null);
+    try {
+      const r = await api.resendVerification();
+      if (r.access_token) tokens.set(r.access_token);
+      setMsg({ kind: "ok", text: "Te reenviamos el correo de verificación. Revisá tu bandeja." });
+    } catch (e: any) {
+      setMsg({ kind: "err", text: e?.message ?? "No se pudo reenviar el correo." });
+    } finally { setBusy(false); }
+  };
+
+  const kycState: StepState = kycDone ? "done" : kycPending ? "pending" : "todo";
+  const kycSubtitle =
+    kycDone ? "Tu identidad fue verificada."
+    : kycPending ? "En revisión por nuestro equipo (hasta 48 hs)."
+    : kycStatus === "REJECTED" ? `Rechazada${rejectionReason ? `: ${rejectionReason}` : ""}.`
+    : "Subí tu cédula (frente, dorso y selfie) para verificar tu identidad.";
+
+  return (
+    <Card title="Verificación de cuenta"
+          desc={allDone ? "Tu cuenta está verificada. Ya podés operar." : "Completá estos pasos para poder operar."}>
+      {allDone && (
+        <div className="rounded-lg border border-yes-500/30 bg-yes-500/5 text-yes-700 dark:text-yes-500 px-3 py-2 text-sm mb-4">
+          ✓ Cuenta verificada — tenés acceso completo.
+        </div>
+      )}
+      <div className="space-y-2">
+        <Step
+          state={emailVerified ? "done" : "todo"}
+          title="Correo electrónico"
+          subtitle={emailVerified ? "Verificado." : "Confirmá tu correo con el link que te enviamos."}
+          action={!emailVerified && (
+            <button onClick={resend} disabled={busy}
+                    className="h-8 px-3 rounded-md bg-ink-900 text-white dark:bg-white dark:text-ink-900 text-xs font-medium disabled:opacity-50">
+              {busy ? "Enviando..." : "Reenviar correo"}
+            </button>
+          )}
+        />
+        <Step
+          state={kycState}
+          title="Identidad (KYC)"
+          subtitle={kycSubtitle}
+          action={!kycDone && !kycPending && (
+            <Link href="/settings/compliance"
+                  className="h-8 px-3 grid place-items-center rounded-md bg-ink-900 text-white dark:bg-white dark:text-ink-900 text-xs font-medium">
+              {kycStatus === "REJECTED" ? "Reenviar" : "Completar"}
+            </Link>
+          )}
+        />
+      </div>
+      <Feedback msg={msg} />
+    </Card>
+  );
+}
+
+type StepState = "done" | "pending" | "todo";
+
+function Step({ state, title, subtitle, action }: { state: StepState; title: string; subtitle: string; action?: React.ReactNode }) {
+  const dot =
+    state === "done" ? "bg-yes-500 text-white"
+    : state === "pending" ? "bg-accent-500 text-white"
+    : "bg-ink-200 dark:bg-ink-700 text-ink-500";
+  const glyph = state === "done" ? "✓" : state === "pending" ? "…" : "";
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-ink-100 dark:border-ink-800 px-3 py-2.5">
+      <span className={`w-6 h-6 shrink-0 grid place-items-center rounded-full text-xs font-bold ${dot}`}>{glyph}</span>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-medium">{title}</div>
+        <div className="text-xs text-ink-500 dark:text-ink-400">{subtitle}</div>
+      </div>
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   );
 }

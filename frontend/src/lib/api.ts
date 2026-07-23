@@ -241,6 +241,7 @@ export const api = {
     request<AmlMute>(`/admin/aml/mutes/${id}`, { method: "DELETE" }),
 
   // Payments (dinero real, wallet-ready)
+  paymentsConfig: () => request<{ enabled: boolean; currency: string }>("/payments/config"),
   myBalance: (currency?: string) =>
     request<Balance>(`/payments/balance${currency ? `?currency=${currency}` : ""}`),
   myDeposits: () => request<Deposit[]>("/payments/deposits"),

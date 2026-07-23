@@ -228,13 +228,10 @@ function PasswordCard() {
 
 function ExternalAccountsCard() {
   return (
-    <Card title="Cuentas externas" desc="Vincular cuentas externas para depósitos y retiros.">
-      <div className="rounded-lg border border-dashed border-ink-200 dark:border-ink-700 px-4 py-6 text-center">
-        <div className="text-sm font-medium">Próximamente</div>
-        <p className="text-xs text-ink-500 dark:text-ink-400 mt-1">
-          Las cuentas operan con créditos virtuales. La vinculación de cuentas externas estará disponible más adelante.
-        </p>
-      </div>
+    <Card title="Billetera" desc="Saldo de dinero real, depósitos y retiros.">
+      <Link href="/wallet" className="inline-flex h-10 px-4 items-center rounded-lg border border-ink-200 dark:border-ink-800 text-sm font-medium hover:border-accent-500">
+        Ir a mi billetera →
+      </Link>
     </Card>
   );
 }

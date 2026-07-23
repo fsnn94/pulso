@@ -41,6 +41,13 @@ def _assert_enabled() -> None:
 
 # ----------------------------------------------------------------- usuario
 
+@router.get("/config")
+async def payments_config(user: Annotated[User, Depends(get_current_user)]):
+    """Estado de los rieles de pago para que el front muestre la UI adecuada."""
+    s = get_settings()
+    return {"enabled": s.payments_enabled, "currency": s.default_currency}
+
+
 @router.get("/balance", response_model=BalanceOut)
 async def my_balance(
     user: Annotated[User, Depends(get_current_user)],

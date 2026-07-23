@@ -1,14 +1,16 @@
 """Pydantic schemas for the API."""
 from __future__ import annotations
 from datetime import datetime
+from decimal import Decimal
 from typing import Literal, Optional
 import uuid
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from .models import (
-    AmlAlertStatus, AmlSeverity, CommissionSource, OrderAction, OrderStatus, OrderType,
-    ResolutionOutcome, ResolutionProposalStatus, Side, MarketStatus, ProposalStatus,
+    AmlAlertStatus, AmlSeverity, CommissionSource, DepositStatus, OrderAction,
+    OrderStatus, OrderType, ResolutionOutcome, ResolutionProposalStatus, Side,
+    MarketStatus, ProposalStatus, WithdrawalStatus,
 )
 
 
@@ -525,3 +527,63 @@ class AmlMuteOut(BaseModel):
     created_at: datetime
     revoked_at: datetime | None
     revoked_by: uuid.UUID | None
+
+
+# ---------- Payments (dinero real, wallet-ready) ----------
+class DepositCreateIn(BaseModel):
+    amount: Decimal = Field(gt=0)
+    currency: str = Field(min_length=3, max_length=3)
+
+
+class WithdrawalCreateIn(BaseModel):
+    amount: Decimal = Field(gt=0)
+    currency: str = Field(min_length=3, max_length=3)
+    destination: dict = Field(default_factory=dict)
+
+
+class BalanceOut(BaseModel):
+    currency: str
+    balance_minor: int
+    balance: str            # formateado, ej. "1250 PYG"
+
+
+class DepositOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    user_id: uuid.UUID
+    amount_minor: int
+    currency: str
+    status: DepositStatus
+    provider: str
+    provider_ref: str | None = None
+    failure_reason: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class WithdrawalOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    user_id: uuid.UUID
+    amount_minor: int
+    currency: str
+    status: WithdrawalStatus
+    provider: str
+    provider_ref: str | None = None
+    failure_reason: str | None = None
+    requested_at: datetime
+    reviewed_at: datetime | None = None
+
+
+class WithdrawalReviewIn(BaseModel):
+    note: str | None = Field(default=None, max_length=255)
+    provider_ref: str | None = Field(default=None, max_length=120)
+
+
+class ReconciliationRow(BaseModel):
+    currency: str
+    users_total: int
+    payout_payable: int
+    custody: int
+    fee_revenue: int
+    balanced: bool

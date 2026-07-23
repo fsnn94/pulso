@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     commission_rate: float = 0.05  # house fee charged on each realized gain (5% of profit)
     tick_size: float = 0.01
 
+    # ----- Pagos / dinero real (wallet-ready) -----
+    # Rieles APAGADOS por defecto: la estructura existe y el admin la ve, pero los
+    # endpoints de usuario (depositar/retirar) están gateados hasta activar esto.
+    payments_enabled: bool = False
+    default_currency: str = "PYG"
+
     seed_on_startup: bool = True
     # Datos demo (usuarios/mercados/posiciones de ejemplo). ON por ahora (fase
     # demo/preview): se siembran al arrancar de forma idempotente, sin tocar los

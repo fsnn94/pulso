@@ -51,7 +51,7 @@ async def require_admin(user: Annotated[User, Depends(get_current_user)]) -> Use
 # ----- Jerarquía de admins: capacidades toggleables por el superadmin -----
 # Cada capacidad mapea a una sección del panel de admin.
 ADMIN_CAPABILITIES: tuple[str, ...] = (
-    "markets", "proposals", "cashflow", "aml", "resolutions", "users",
+    "markets", "proposals", "cashflow", "aml", "resolutions", "users", "payments",
 )
 
 
@@ -90,6 +90,7 @@ require_cashflow    = require_capability("cashflow")
 require_aml_cap     = require_capability("aml")
 require_resolutions = require_capability("resolutions")
 require_users       = require_capability("users")
+require_payments    = require_capability("payments")
 
 
 async def require_superadmin(user: Annotated[User, Depends(get_current_user)]) -> User:

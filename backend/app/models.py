@@ -5,7 +5,7 @@ from enum import Enum as PyEnum
 import uuid
 
 from sqlalchemy import (
-    Boolean, DateTime, Enum, Float, ForeignKey, Integer, String, Text, Index,
+    BigInteger, Boolean, DateTime, Enum, Float, ForeignKey, Integer, String, Text, Index,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -554,4 +554,124 @@ class AmlMute(Base):
 
     __table_args__ = (
         Index("ix_aml_mute_user_rule", "user_id", "rule_code"),
+    )
+
+
+# ============================================================ Dinero real (pagos)
+# Estructura "wallet-ready": el esquema de dinero real vive acá con contabilidad de
+# doble entrada; los rieles a un proveedor externo se enchufan luego. Los montos son
+# unidades menores enteras (BigInteger) — nunca float. Ver docs/arquitectura-pagos-kyc.md.
+
+class LedgerAccountType(str, PyEnum):
+    USER             = "USER"              # claim de un usuario (account_ref = user_id)
+    CUSTODY          = "CUSTODY"           # contracuenta de la custodia (banco/proveedor)
+    FEE_REVENUE      = "FEE_REVENUE"       # ingresos por comisiones de pago
+    PAYMENT_PROVIDER = "PAYMENT_PROVIDER"  # tránsito con el proveedor
+    PAYOUT_PAYABLE   = "PAYOUT_PAYABLE"    # retiros aprobados aún no pagados (hold)
+
+
+class MoneyLedgerKind(str, PyEnum):
+    DEPOSIT      = "DEPOSIT"
+    WITHDRAWAL   = "WITHDRAWAL"
+    TRADE_SETTLE = "TRADE_SETTLE"
+    FEE          = "FEE"
+    ADJUSTMENT   = "ADJUSTMENT"
+    REVERSAL     = "REVERSAL"
+
+
+class DepositStatus(str, PyEnum):
+    INITIATED = "INITIATED"
+    PENDING   = "PENDING"
+    CONFIRMED = "CONFIRMED"
+    FAILED    = "FAILED"
+    REVERSED  = "REVERSED"
+
+
+class WithdrawalStatus(str, PyEnum):
+    REQUESTED  = "REQUESTED"
+    APPROVED   = "APPROVED"
+    PROCESSING = "PROCESSING"
+    PAID       = "PAID"
+    REJECTED   = "REJECTED"
+    FAILED     = "FAILED"
+
+
+class MoneyLedger(Base):
+    """Contabilidad de doble entrada del dinero REAL. Cada operación inserta ≥2
+    filas con el mismo `entry_group` que suman 0. El saldo de un usuario es la
+    suma derivada de sus filas (account_type=USER, account_ref=user_id).
+    Se crea con create_all."""
+    __tablename__ = "money_ledger"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    account_type: Mapped[LedgerAccountType] = mapped_column(Enum(LedgerAccountType), nullable=False)
+    account_ref: Mapped[str | None] = mapped_column(String(64), nullable=True)   # user_id si USER; None en cuentas de sistema
+    entry_group: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    amount_minor: Mapped[int] = mapped_column(BigInteger, nullable=False)         # con signo; unidades menores
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    kind: Mapped[MoneyLedgerKind] = mapped_column(Enum(MoneyLedgerKind), nullable=False)
+    ref_id: Mapped[str | None] = mapped_column(String(64), nullable=True)         # id del Deposit/Withdrawal/... origen
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+    __table_args__ = (
+        Index("ix_money_ledger_account", "account_type", "account_ref", "currency"),
+    )
+
+
+class Deposit(Base):
+    """Intento de ingreso de dinero real. La acreditación al ledger ocurre EXACTAMENTE
+    una vez, en la transición a CONFIRMED (idempotente). Se crea con create_all."""
+    __tablename__ = "deposits"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    amount_minor: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    status: Mapped[DepositStatus] = mapped_column(Enum(DepositStatus), default=DepositStatus.PENDING, nullable=False, index=True)
+    provider: Mapped[str] = mapped_column(String(40), default="manual", nullable=False)
+    provider_ref: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    idempotency_key: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
+    failure_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+class Withdrawal(Base):
+    """Solicitud de retiro. En REQUESTED se hace un HOLD (debita del claim del usuario
+    hacia PAYOUT_PAYABLE). Requiere KYC APPROVED + sin flag AML + saldo suficiente, y
+    aprobación de un admin con capacidad `payments`. Se crea con create_all."""
+    __tablename__ = "withdrawals"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    amount_minor: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    status: Mapped[WithdrawalStatus] = mapped_column(Enum(WithdrawalStatus), default=WithdrawalStatus.REQUESTED, nullable=False, index=True)
+    destination: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)   # datos de destino (tokenizar/cifrar en prod)
+    provider: Mapped[str] = mapped_column(String(40), default="manual", nullable=False)
+    provider_ref: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    idempotency_key: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
+    failure_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    reviewed_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+class PaymentEvent(Base):
+    """Log append-only de eventos de proveedor (webhooks) para idempotencia y
+    auditoría. Unicidad (provider, event_id) → un evento se procesa una sola vez.
+    Se crea con create_all."""
+    __tablename__ = "payment_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    provider: Mapped[str] = mapped_column(String(40), nullable=False)
+    event_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    signature_valid: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+
+    __table_args__ = (
+        Index("ix_payment_events_provider_event", "provider", "event_id", unique=True),
     )

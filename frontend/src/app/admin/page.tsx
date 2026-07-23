@@ -54,6 +54,10 @@ export default function AdminPage() {
                   ? "Verificar, deshabilitar, roles de admin, permisos y flags AML."
                   : "Verificar, deshabilitar y flags AML."} />
         )}
+        {can("payments") && (
+          <Card href="/admin/payments" eyebrow="Dinero real" title="Pagos"
+                body="Confirmar depósitos, aprobar/pagar retiros y reconciliación (wallet-ready)." />
+        )}
         <Card href="/compliance" eyebrow="Regulatorio" title="Marco de cumplimiento (Paraguay)"
               body="Postura ante CONAJZAR / CNV / SEPRELAD." />
       </div>

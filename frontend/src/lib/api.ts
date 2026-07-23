@@ -216,6 +216,32 @@ export const api = {
     request<AmlMute>("/admin/aml/mutes", { method: "POST", body: JSON.stringify(b) }),
   revokeAmlMute: (id: string) =>
     request<AmlMute>(`/admin/aml/mutes/${id}`, { method: "DELETE" }),
+
+  // Payments (dinero real, wallet-ready)
+  myBalance: (currency?: string) =>
+    request<Balance>(`/payments/balance${currency ? `?currency=${currency}` : ""}`),
+  myDeposits: () => request<Deposit[]>("/payments/deposits"),
+  myWithdrawals: () => request<Withdrawal[]>("/payments/withdrawals"),
+  createDeposit: (b: { amount: string; currency: string }) =>
+    request<Deposit>("/payments/deposits", { method: "POST", body: JSON.stringify(b) }),
+  createWithdrawal: (b: { amount: string; currency: string; destination?: Record<string, unknown> }) =>
+    request<Withdrawal>("/payments/withdrawals", { method: "POST", body: JSON.stringify(b) }),
+  // admin
+  adminDeposits: (status?: string) =>
+    request<Deposit[]>(`/admin/payments/deposits${status ? `?status=${status}` : ""}`),
+  confirmDeposit: (id: string) =>
+    request<Deposit>(`/admin/payments/deposits/${id}/confirm`, { method: "POST" }),
+  failDeposit: (id: string, reason?: string) =>
+    request<Deposit>(`/admin/payments/deposits/${id}/fail${reason ? `?reason=${encodeURIComponent(reason)}` : ""}`, { method: "POST" }),
+  adminWithdrawals: (status?: string) =>
+    request<Withdrawal[]>(`/admin/payments/withdrawals${status ? `?status=${status}` : ""}`),
+  approveWithdrawal: (id: string) =>
+    request<Withdrawal>(`/admin/payments/withdrawals/${id}/approve`, { method: "POST" }),
+  markWithdrawalPaid: (id: string, b: { provider_ref?: string; note?: string } = {}) =>
+    request<Withdrawal>(`/admin/payments/withdrawals/${id}/mark-paid`, { method: "POST", body: JSON.stringify(b) }),
+  rejectWithdrawal: (id: string, b: { note?: string } = {}) =>
+    request<Withdrawal>(`/admin/payments/withdrawals/${id}/reject`, { method: "POST", body: JSON.stringify(b) }),
+  reconciliation: () => request<ReconciliationRow[]>("/admin/payments/reconciliation"),
 };
 
 // ---------- types
@@ -231,6 +257,25 @@ export type User = {
   kyc_completed_at?: string | null;
 };
 
+// Pagos (dinero real, wallet-ready)
+export type Balance = { currency: string; balance_minor: number; balance: string };
+export type Deposit = {
+  id: string; user_id: string; amount_minor: number; currency: string;
+  status: "INITIATED" | "PENDING" | "CONFIRMED" | "FAILED" | "REVERSED";
+  provider: string; provider_ref?: string | null; failure_reason?: string | null;
+  created_at: string; updated_at: string;
+};
+export type Withdrawal = {
+  id: string; user_id: string; amount_minor: number; currency: string;
+  status: "REQUESTED" | "APPROVED" | "PROCESSING" | "PAID" | "REJECTED" | "FAILED";
+  provider: string; provider_ref?: string | null; failure_reason?: string | null;
+  requested_at: string; reviewed_at?: string | null;
+};
+export type ReconciliationRow = {
+  currency: string; users_total: number; payout_payable: number;
+  custody: number; fee_revenue: number; balanced: boolean;
+};
+
 // Capacidades del panel de admin (deben coincidir con ADMIN_CAPABILITIES del backend).
 export const ADMIN_CAPS: { key: string; label: string; href: string }[] = [
   { key: "markets",     label: "Mercados",      href: "/admin/markets" },
@@ -239,6 +284,7 @@ export const ADMIN_CAPS: { key: string; label: string; href: string }[] = [
   { key: "aml",         label: "AML",           href: "/admin/aml" },
   { key: "resolutions", label: "Resoluciones",  href: "/admin/resolutions" },
   { key: "users",       label: "Usuarios",      href: "/admin/users" },
+  { key: "payments",    label: "Pagos",         href: "/admin/payments" },
 ];
 
 /** ¿El admin tiene la capacidad `cap`? superadmin y admin legado (perms null) = todo. */

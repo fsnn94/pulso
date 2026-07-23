@@ -10,6 +10,7 @@ import { LineChart } from "@/components/charts";
 import { TradePanel } from "@/components/TradePanel";
 import { MarketComments } from "@/components/MarketComments";
 import { MarketSummaryCard } from "@/components/MarketSummaryCard";
+import { FollowButton } from "@/components/FollowButton";
 import { Icon } from "@/components/Icon";
 import { compact, fmtDate, fmtDateTime, pct, timeAgo, statusEs } from "@/lib/format";
 import { isLabeledMarket, sideLabel } from "@/lib/market";
@@ -65,9 +66,12 @@ export default function MarketDetailPage() {
 
       <div className="grid lg:grid-cols-[1fr_360px] gap-6 lg:gap-10">
         <div>
-          <span className="inline-block text-[10px] font-medium uppercase tracking-wider px-2 py-1 rounded bg-ink-50 dark:bg-ink-800 text-ink-500 dark:text-ink-400 mb-3">
-            {market.category}
-          </span>
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <span className="inline-block text-[10px] font-medium uppercase tracking-wider px-2 py-1 rounded bg-ink-50 dark:bg-ink-800 text-ink-500 dark:text-ink-400">
+              {market.category}
+            </span>
+            <FollowButton marketId={id} />
+          </div>
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight leading-[1.15]">{market.title}</h1>
 
           <div className="mt-6 flex items-baseline gap-4 flex-wrap">

@@ -49,6 +49,14 @@ export default function HomePage() {
     });
   }, []);
 
+  // Estantes de descubrimiento (solo mercados OPEN), independientes de los filtros.
+  const [shelfClosing, setShelfClosing] = useState<Market[]>([]);
+  const [shelfNew, setShelfNew] = useState<Market[]>([]);
+  useEffect(() => {
+    api.listMarkets({ sort: "closing" }).then((r) => setShelfClosing(r.items.filter((m) => m.status === "OPEN").slice(0, 8))).catch(() => {});
+    api.listMarkets({ sort: "newest" }).then((r) => setShelfNew(r.items.filter((m) => m.status === "OPEN").slice(0, 8))).catch(() => {});
+  }, []);
+
   useEffect(() => {
     let cancel = false;
     setLoading(true);
@@ -105,6 +113,14 @@ export default function HomePage() {
     </div>
   );
 
+  const showShelves = category === "All" && !q.trim();
+  const shelves = showShelves ? (
+    <>
+      <Shelf title="Cerrando pronto" markets={shelfClosing} watched={watched} onToggle={user ? toggleWatch : undefined}/>
+      <Shelf title="Nuevos" markets={shelfNew} watched={watched} onToggle={user ? toggleWatch : undefined}/>
+    </>
+  ) : null;
+
   const grid = (cols: string) => {
     if (loading) return (
       <div className={cols}>
@@ -151,6 +167,8 @@ export default function HomePage() {
         <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
           <KycNotice />
         </section>
+
+        {shelves && <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">{shelves}</section>}
 
         <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-16">
           {filters}
@@ -214,6 +232,27 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="border-l border-ink-100 dark:border-ink-800 pl-4">
       <div className="text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400">{label}</div>
       <div className="text-lg sm:text-xl font-semibold num mt-0.5">{value}</div>
+    </div>
+  );
+}
+
+function Shelf({ title, markets, watched, onToggle }: {
+  title: string;
+  markets: Market[];
+  watched: Set<string>;
+  onToggle?: (marketId: string) => void;
+}) {
+  if (markets.length === 0) return null;
+  return (
+    <div className="mb-8">
+      <h2 className="text-sm font-semibold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-3">{title}</h2>
+      <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 snap-x">
+        {markets.map((m) => (
+          <div key={m.id} className="min-w-[280px] max-w-[280px] snap-start">
+            <MarketCard market={m} watched={watched.has(m.id)} onToggleWatch={onToggle}/>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

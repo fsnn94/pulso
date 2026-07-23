@@ -112,7 +112,13 @@ class User(Base):
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # KYC / compliance fields (Paraguay: SEPRELAD AML, CNV records, Law 6534/2020 data privacy)
-    full_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    full_name: Mapped[str | None] = mapped_column(String(160), nullable=True)     # nombres + apellidos (derivado)
+    first_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    last_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Teléfono normalizado (solo dígitos, con prefijo país) — UNIQUE: un tel = una cuenta.
+    phone_normalized: Mapped[str | None] = mapped_column(String(40), nullable=True, unique=True, index=True)
+    address: Mapped[str | None] = mapped_column(String(300), nullable=True)
     country: Mapped[str | None] = mapped_column(String(2), nullable=True)        # ISO 3166-1 alpha-2 (e.g. PY)
     id_number: Mapped[str | None] = mapped_column(String(40), nullable=True)     # cédula / passport
     # Clave de unicidad: id_number sin puntos/espacios/guiones, upper, prefijado

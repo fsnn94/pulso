@@ -66,8 +66,25 @@ export const api = {
   },
 
   // auth
-  register: (b: { email: string; handle: string; password: string; accepted_disclaimer: boolean }) =>
+  register: (b: RegisterInput) =>
     request<{ access_token: string; verification_link?: string | null }>("/auth/register", { method: "POST", body: JSON.stringify(b) }),
+  uploadKycDocument: async (side: "FRONT" | "BACK" | "SELFIE", file: File) => {
+    const fd = new FormData();
+    fd.append("side", side);
+    fd.append("file", file);
+    const t = tokens.get();
+    const res = await fetch(`${API_BASE}/auth/kyc/documents`, {
+      method: "POST",
+      headers: t ? { Authorization: `Bearer ${t}` } : {},   // sin Content-Type: el browser pone el boundary
+      body: fd,
+    });
+    if (!res.ok) {
+      let d: any; try { d = await res.json(); } catch { d = { detail: res.statusText }; }
+      throw new ApiError(errorMessage(d, res.status), res.status, d);
+    }
+    return res.json() as Promise<KycDocumentMeta>;
+  },
+  submitKycForReview: () => request<{ kyc_status: string; sla_hours: number }>("/auth/kyc/submit", { method: "POST" }),
   login: (b: { email: string; password: string }) =>
     request<{ access_token: string }>("/auth/login", { method: "POST", body: JSON.stringify(b) }),
   me: () => request<User>("/auth/me"),
@@ -242,6 +259,23 @@ export const api = {
   rejectWithdrawal: (id: string, b: { note?: string } = {}) =>
     request<Withdrawal>(`/admin/payments/withdrawals/${id}/reject`, { method: "POST", body: JSON.stringify(b) }),
   reconciliation: () => request<ReconciliationRow[]>("/admin/payments/reconciliation"),
+
+  // KYC admin (revisión de identidad)
+  adminKycList: (status = "UNDER_REVIEW") =>
+    request<KycProfile[]>(`/admin/kyc?status=${status}`),
+  adminKycGet: (userId: string) => request<KycProfile>(`/admin/kyc/${userId}`),
+  approveKyc: (userId: string) => request<KycProfile>(`/admin/kyc/${userId}/approve`, { method: "POST" }),
+  rejectKyc: (userId: string, reason: string) =>
+    request<KycProfile>(`/admin/kyc/${userId}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
+  // El documento requiere auth (no sirve <img src>): se trae como blob → objectURL.
+  kycDocBlobUrl: async (userId: string, docId: string): Promise<string> => {
+    const t = tokens.get();
+    const res = await fetch(`${API_BASE}/admin/kyc/${userId}/documents/${docId}`, {
+      headers: t ? { Authorization: `Bearer ${t}` } : {},
+    });
+    if (!res.ok) throw new ApiError("No se pudo cargar el documento", res.status, null);
+    return URL.createObjectURL(await res.blob());
+  },
 };
 
 // ---------- types
@@ -255,6 +289,22 @@ export type User = {
   kyc_status?: "NONE" | "SUBMITTED" | "UNDER_REVIEW" | "APPROVED" | "REJECTED";
   kyc_rejection_reason?: string | null;
   kyc_completed_at?: string | null;
+};
+
+// Registro con KYC
+export type RegisterInput = {
+  email: string; handle: string; password: string; accepted_disclaimer: boolean;
+  first_name: string; last_name: string; date_of_birth: string; id_number: string;
+  country: string; phone: string; address: string; document_type: "CEDULA" | "PASSPORT";
+};
+export type KycDocumentMeta = { id: string; side: "FRONT" | "BACK" | "SELFIE"; content_type?: string | null; uploaded_at: string };
+export type KycProfile = {
+  user_id: string; email: string; handle: string;
+  first_name?: string | null; last_name?: string | null; full_name?: string | null;
+  country?: string | null; id_number?: string | null; date_of_birth?: string | null;
+  phone?: string | null; address?: string | null; document_type?: string | null;
+  kyc_status: "NONE" | "SUBMITTED" | "UNDER_REVIEW" | "APPROVED" | "REJECTED";
+  kyc_rejection_reason?: string | null; created_at: string; documents: KycDocumentMeta[];
 };
 
 // Pagos (dinero real, wallet-ready)
@@ -285,6 +335,7 @@ export const ADMIN_CAPS: { key: string; label: string; href: string }[] = [
   { key: "resolutions", label: "Resoluciones",  href: "/admin/resolutions" },
   { key: "users",       label: "Usuarios",      href: "/admin/users" },
   { key: "payments",    label: "Pagos",         href: "/admin/payments" },
+  { key: "kyc",         label: "Verificación",  href: "/admin/kyc" },
 ];
 
 /** ¿El admin tiene la capacidad `cap`? superadmin y admin legado (perms null) = todo. */

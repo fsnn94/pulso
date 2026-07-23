@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .config import get_settings
 from .models import (
     Activity, AmlAlert, AmlMute, AppSetting, Commission, EmailVerification,
-    EquitySnapshot, Market, MarketDispute, MarketProposal, MarketStatus,
+    EquitySnapshot, KycStatus, Market, MarketDispute, MarketProposal, MarketStatus,
     Notification, Order, Position, ResolutionProposal, Side, Trade, User,
 )
 from .security import hash_password
@@ -133,6 +133,7 @@ async def seed_if_empty(db: AsyncSession) -> None:
             is_admin=True,
             cash=100_000.0,
             accepted_research_disclaimer=True,
+            kyc_status=KycStatus.APPROVED,
         )
         db.add(admin)
         await db.flush()
@@ -334,6 +335,8 @@ async def _seed_demo_users(db: AsyncSession) -> None:
             full_name=full_name if has_kyc else None,
             country=country if has_kyc else None,
             kyc_completed_at=(now - timedelta(days=15)) if has_kyc else None,
+            # Demo: aprobados para poder operar bajo el gate de KYC.
+            kyc_status=KycStatus.APPROVED,
             accepted_research_disclaimer=True,
         )
         db.add(u)

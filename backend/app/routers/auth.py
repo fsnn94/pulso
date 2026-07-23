@@ -3,8 +3,10 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+import hashlib
 import re
+import uuid
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,15 +19,17 @@ from ..email import (
     issue_password_reset_token, issue_verification_token, password_reset_link,
     send_password_reset_email, send_verification_email, verification_link,
 )
-from ..kyc import age_years, normalize_id_number
+from ..kyc import age_years, normalize_id_number, normalize_phone
 from ..models import (
     AmlAlert, AmlAlertStatus, AmlSeverity, DocumentType, EmailVerification,
-    KycStatus, PasswordReset, User,
+    KycDocument, KycDocumentSide, KycStatus, PasswordReset, User,
 )
 from ..schemas import (
-    ChangeHandleIn, ChangePasswordIn, ForgotPasswordIn, ForgotPasswordOut, KycIn,
-    LoginIn, RegisterIn, ResetPasswordIn, TokenOut, UserOut, VerifyIn,
+    ChangeHandleIn, ChangePasswordIn, ForgotPasswordIn, ForgotPasswordOut,
+    KycDocumentOut, KycIn, KycSubmitOut, LoginIn, RegisterIn, ResetPasswordIn,
+    TokenOut, UserOut, VerifyIn,
 )
+from ..storage import get_storage
 from ..security import create_access_token, hash_password, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -36,21 +40,49 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED,
              dependencies=[Depends(rate_limit("register", 5, 3600))])
 async def register(payload: RegisterIn, db: Annotated[AsyncSession, Depends(get_db)]):
+    """Crea la cuenta con los datos de identidad. Unicidad: email, cédula y teléfono
+    quedan atados a un único usuario. La cuenta arranca en KYC NONE; el usuario luego
+    sube los documentos (selfie + cédula) y envía a revisión (kyc/submit).
+    +18 se valida en el schema y se revalida acá."""
     s = get_settings()
     if not payload.accepted_disclaimer:
         raise HTTPException(400, "Debes aceptar el descargo")
-    existing = await db.execute(select(User).where(User.email == payload.email))
-    if existing.scalar_one_or_none():
+    if age_years(payload.date_of_birth) < 18:
+        raise HTTPException(403, "Debes ser mayor de 18 años para registrarte")
+
+    id_norm = normalize_id_number(payload.id_number, payload.country)
+    phone_norm = normalize_phone(payload.phone, payload.country)
+
+    # Unicidad: email, handle, cédula y teléfono, cada uno atado a un único usuario.
+    if (await db.execute(select(User.id).where(func.lower(User.email) == payload.email.lower()))).first():
         raise HTTPException(409, "El email ya está registrado")
-    handle_taken = await db.execute(select(User).where(User.handle == payload.handle))
-    if handle_taken.scalar_one_or_none():
+    if (await db.execute(select(User.id).where(func.lower(User.handle) == payload.handle.lower()))).first():
         raise HTTPException(409, "El usuario ya está en uso")
+    if (await db.execute(select(User.id).where(User.id_number_normalized == id_norm))).first():
+        raise HTTPException(409, "El número de documento ya está registrado en otra cuenta")
+    if phone_norm and (await db.execute(select(User.id).where(User.phone_normalized == phone_norm))).first():
+        raise HTTPException(409, "El teléfono ya está registrado en otra cuenta")
+
+    first = payload.first_name.strip()
+    last = payload.last_name.strip()
     user = User(
         email=payload.email,
         handle=payload.handle,
         password_hash=hash_password(payload.password),
         accepted_research_disclaimer=True,
         cash=s.starting_credits,
+        first_name=first,
+        last_name=last,
+        full_name=f"{first} {last}".strip(),
+        date_of_birth=payload.date_of_birth,
+        id_number=payload.id_number.strip(),
+        id_number_normalized=id_norm,
+        document_type=DocumentType[payload.document_type],
+        country=payload.country.upper(),
+        phone=payload.phone.strip(),
+        phone_normalized=phone_norm or None,
+        address=payload.address.strip(),
+        kyc_status=KycStatus.NONE,
     )
     db.add(user)
     await db.flush()
@@ -66,6 +98,94 @@ async def register(payload: RegisterIn, db: Annotated[AsyncSession, Depends(get_
         access_token=create_access_token(user.id, is_admin=user.is_admin, password_hash=user.password_hash),
         verification_link=link if (s.expose_verification_link_in_dev and s.environment != "production") else None,
     )
+
+
+# ---------- KYC: subida de documentos (registro) ----------
+
+_ALLOWED_DOC_TYPES = {
+    "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "application/pdf": "pdf",
+}
+
+
+@router.post("/kyc/documents", response_model=KycDocumentOut,
+             dependencies=[Depends(rate_limit("kyc-upload", 20, 3600))])
+async def upload_kyc_document(
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    side: Annotated[str, Form()],
+    file: Annotated[UploadFile, File()],
+):
+    """Sube una imagen del documento (side = FRONT | BACK | SELFIE). Reemplaza la
+    anterior del mismo tipo si existía. La imagen va a storage privado; en la DB
+    queda solo el puntero."""
+    s = get_settings()
+    try:
+        side_enum = KycDocumentSide[side.upper()]
+    except KeyError:
+        raise HTTPException(400, "Tipo de documento inválido (FRONT | BACK | SELFIE)")
+
+    ct = (file.content_type or "").lower()
+    if ct not in _ALLOWED_DOC_TYPES:
+        raise HTTPException(415, "Formato no permitido. Usá JPG, PNG, WEBP o PDF.")
+
+    data = await file.read()
+    if not data:
+        raise HTTPException(400, "El archivo está vacío")
+    if len(data) > s.kyc_max_file_bytes:
+        raise HTTPException(413, "El archivo es demasiado grande (máx. 8 MB)")
+
+    ext = _ALLOWED_DOC_TYPES[ct]
+    key = f"kyc/{user.id}/{side_enum.value.lower()}-{uuid.uuid4().hex}.{ext}"
+    await get_storage().put(key, data, ct)
+
+    # Reemplaza el documento previo del mismo lado (best-effort borra su blob).
+    prev = (await db.execute(
+        select(KycDocument).where(KycDocument.user_id == user.id, KycDocument.side == side_enum)
+    )).scalars().all()
+    for p in prev:
+        try:
+            await get_storage().delete(p.storage_key)
+        except Exception:
+            pass
+        await db.delete(p)
+
+    doc = KycDocument(
+        user_id=user.id, side=side_enum, storage_key=key,
+        content_hash=hashlib.sha256(data).hexdigest(), content_type=ct,
+    )
+    db.add(doc)
+    await db.commit()
+    await db.refresh(doc)
+    return doc
+
+
+@router.post("/kyc/submit", response_model=KycSubmitOut)
+async def submit_kyc_for_review(
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Envía la cuenta a revisión del equipo admin. Exige los datos de identidad y
+    los 3 documentos (frente, dorso, selfie con cédula)."""
+    if user.kyc_status == KycStatus.APPROVED:
+        raise HTTPException(400, "Tu identidad ya está verificada.")
+    if not (user.id_number_normalized and user.date_of_birth and user.full_name):
+        raise HTTPException(400, "Faltan datos de identidad. Completá el registro.")
+
+    sides = {
+        d.side for d in (await db.execute(
+            select(KycDocument).where(KycDocument.user_id == user.id)
+        )).scalars().all()
+    }
+    required = {KycDocumentSide.FRONT, KycDocumentSide.BACK, KycDocumentSide.SELFIE}
+    missing = required - sides
+    if missing:
+        faltan = ", ".join(sorted(m.value for m in missing))
+        raise HTTPException(400, f"Faltan documentos: {faltan}")
+
+    user.kyc_status = KycStatus.UNDER_REVIEW
+    user.kyc_rejection_reason = None
+    await db.commit()
+    return KycSubmitOut(kyc_status=KycStatus.UNDER_REVIEW.value, sla_hours=get_settings().kyc_review_sla_hours)
 
 
 @router.post("/login", response_model=TokenOut,

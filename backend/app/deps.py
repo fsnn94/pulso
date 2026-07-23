@@ -51,7 +51,7 @@ async def require_admin(user: Annotated[User, Depends(get_current_user)]) -> Use
 # ----- Jerarquía de admins: capacidades toggleables por el superadmin -----
 # Cada capacidad mapea a una sección del panel de admin.
 ADMIN_CAPABILITIES: tuple[str, ...] = (
-    "markets", "proposals", "cashflow", "aml", "resolutions", "users", "payments",
+    "markets", "proposals", "cashflow", "aml", "resolutions", "users", "payments", "kyc",
 )
 
 
@@ -91,6 +91,7 @@ require_aml_cap     = require_capability("aml")
 require_resolutions = require_capability("resolutions")
 require_users       = require_capability("users")
 require_payments    = require_capability("payments")
+require_kyc         = require_capability("kyc")
 
 
 async def require_superadmin(user: Annotated[User, Depends(get_current_user)]) -> User:
@@ -110,5 +111,20 @@ async def require_verified(user: Annotated[User, Depends(get_current_user)]) -> 
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
             "Verifica tu email para operar. Revisa tu bandeja de entrada o solicita un nuevo link.",
+        )
+    return user
+
+
+async def require_kyc_approved(user: Annotated[User, Depends(get_current_user)]) -> User:
+    """Bloquea operar hasta que el equipo admin verifique la identidad (KYC APPROVED).
+    Los usuarios previos al deploy quedan grandfathered (APPROVED) por la migración."""
+    from .config import get_settings
+    from .models import KycStatus
+    if not get_settings().kyc_required_to_trade:
+        return user
+    if user.kyc_status != KycStatus.APPROVED:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Tu cuenta está en revisión. Podrás operar cuando se verifique tu identidad.",
         )
     return user

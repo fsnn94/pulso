@@ -16,10 +16,31 @@ from .models import (
 
 # ---------- Auth ----------
 class RegisterIn(BaseModel):
+    # Cuenta
     email: EmailStr
     handle: str = Field(min_length=2, max_length=40)
     password: str = Field(min_length=6, max_length=128)
     accepted_disclaimer: bool
+    # Datos de identidad (KYC en el registro)
+    first_name: str = Field(min_length=1, max_length=80)
+    last_name: str = Field(min_length=1, max_length=80)
+    date_of_birth: datetime
+    id_number: str = Field(min_length=3, max_length=40)
+    country: str = Field(min_length=2, max_length=2)
+    phone: str = Field(min_length=5, max_length=40)
+    address: str = Field(min_length=3, max_length=300)
+    document_type: Literal["CEDULA", "PASSPORT"] = "CEDULA"
+
+    @field_validator("date_of_birth")
+    @classmethod
+    def _valid_dob(cls, v: datetime) -> datetime:
+        from .kyc import age_years
+        age = age_years(v)
+        if age < 0 or age > 120:
+            raise ValueError("Fecha de nacimiento inválida")
+        if age < 18:
+            raise ValueError("Debes ser mayor de 18 años para registrarte")
+        return v
 
 
 class LoginIn(BaseModel):
@@ -587,3 +608,41 @@ class ReconciliationRow(BaseModel):
     custody: int
     fee_revenue: int
     balanced: bool
+
+
+# ---------- KYC documentos + revisión admin ----------
+class KycDocumentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    side: str                # FRONT | BACK | SELFIE
+    content_type: str | None = None
+    uploaded_at: datetime
+
+
+class KycSubmitOut(BaseModel):
+    kyc_status: str
+    sla_hours: int
+
+
+class KycProfileOut(BaseModel):
+    """Vista admin del perfil KYC de un usuario (datos + documentos presentes)."""
+    user_id: uuid.UUID
+    email: str
+    handle: str
+    first_name: str | None = None
+    last_name: str | None = None
+    full_name: str | None = None
+    country: str | None = None
+    id_number: str | None = None
+    date_of_birth: datetime | None = None
+    phone: str | None = None
+    address: str | None = None
+    document_type: str | None = None
+    kyc_status: str
+    kyc_rejection_reason: str | None = None
+    created_at: datetime
+    documents: list[KycDocumentOut] = []
+
+
+class KycRejectIn(BaseModel):
+    reason: str = Field(min_length=3, max_length=500)

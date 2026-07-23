@@ -14,6 +14,7 @@ from .resolution_loop import resolution_loop
 from .snapshot_loop import snapshot_loop
 from .routers import admin, auth, comments, leaderboard, markets, news, notifications, orders, payments, portfolio, proposals, users
 from .routers import aml as aml_router
+from .routers import kyc as kyc_router
 from .routers import resolutions as resolutions_router
 from .seed import ensure_superadmin, purge_demo_data, seed_if_empty
 from .ws import router as ws_router
@@ -129,6 +130,7 @@ def create_app() -> FastAPI:
     app.include_router(admin.router)
     app.include_router(payments.router)
     app.include_router(payments.admin_router)
+    app.include_router(kyc_router.admin_router)
     app.include_router(aml_router.router)
     app.include_router(resolutions_router.admin_router)
     app.include_router(resolutions_router.user_router)

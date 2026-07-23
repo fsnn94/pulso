@@ -17,6 +17,24 @@ def normalize_id_number(id_number: str, country: str | None) -> str:
     return f"{(country or '').upper()}:{cleaned}"
 
 
+# Códigos de discado por país (ISO alpha-2) — para normalizar teléfonos a un
+# formato canónico y detectar duplicados (0981... y +595981... = mismo número).
+_CALLING_CODES = {
+    "PY": "595", "AR": "54", "BR": "55", "CL": "56", "UY": "598", "BO": "591",
+    "US": "1", "ES": "34", "MX": "52",
+}
+
+
+def normalize_phone(phone: str, country: str | None) -> str:
+    """Teléfono canónico: solo dígitos, con prefijo país (+595...). Heurístico:
+    quita el 0 troncal local y antepone el código de discado del país."""
+    digits = re.sub(r"\D", "", phone or "")
+    cc = _CALLING_CODES.get((country or "").upper())
+    if cc and not digits.startswith(cc):
+        digits = cc + digits.lstrip("0")
+    return f"+{digits}" if digits else ""
+
+
 def _as_utc(dt: datetime) -> datetime:
     return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
 

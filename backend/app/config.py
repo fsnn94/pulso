@@ -27,6 +27,26 @@ class Settings(BaseSettings):
     payments_enabled: bool = False
     default_currency: str = "PYG"
 
+    # ----- KYC / verificación de identidad con documentos -----
+    # Toda cuenta nueva pasa por revisión manual (datos + selfie + cédula frente/dorso)
+    # antes de poder operar. Los usuarios existentes al momento del deploy quedan
+    # grandfathered (APPROVED) por la migración, así no se les corta el acceso.
+    kyc_required_to_trade: bool = True
+    kyc_review_sla_hours: int = 48            # texto de demora que se le muestra al usuario
+    kyc_max_file_bytes: int = 8 * 1024 * 1024  # límite por imagen subida (8 MB)
+
+    # Storage de documentos KYC. Backend: "r2" (Cloudflare R2, S3-compatible) o
+    # "filesystem" (solo dev; en Render el disco es efímero). Las imágenes NUNCA
+    # van en la DB: se guarda solo un puntero (storage_key).
+    kyc_storage_backend: str = "filesystem"
+    kyc_local_storage_dir: str = ".kyc_store"  # solo para filesystem (dev)
+    # Cloudflare R2 (S3-compatible). Endpoint: https://<account_id>.r2.cloudflarestorage.com
+    r2_account_id: str = ""
+    r2_access_key_id: str = ""
+    r2_secret_access_key: str = ""
+    r2_bucket: str = ""
+    r2_endpoint: str = ""                      # opcional; si vacío se arma con r2_account_id
+
     seed_on_startup: bool = True
     # Datos demo (usuarios/mercados/posiciones de ejemplo). ON por ahora (fase
     # demo/preview): se siembran al arrancar de forma idempotente, sin tocar los

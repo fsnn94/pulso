@@ -58,6 +58,10 @@ export default function AdminPage() {
           <Card href="/admin/payments" eyebrow="Dinero real" title="Pagos"
                 body="Confirmar depósitos, aprobar/pagar retiros y reconciliación (wallet-ready)." />
         )}
+        {can("kyc") && (
+          <Card href="/admin/kyc" eyebrow="Onboarding" title="Verificación de identidad"
+                body="Revisar datos + cédula (selfie/frente/dorso) y aprobar o rechazar cuentas nuevas." />
+        )}
         <Card href="/compliance" eyebrow="Regulatorio" title="Marco de cumplimiento (Paraguay)"
               body="Postura ante CONAJZAR / CNV / SEPRELAD." />
       </div>

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..aml import evaluate_after_trade
 from ..db import get_db
-from ..deps import get_current_user, require_verified
+from ..deps import get_current_user, require_kyc_approved
 from ..matching import place_order, cancel_order
 from ..models import AmlAlertStatus, Market, Order, OrderStatus, User
 from ..schemas import OrderIn, OrderOut
@@ -21,7 +21,7 @@ router = APIRouter(prefix="/orders", tags=["orders"])
 @router.post("", response_model=OrderOut, status_code=status.HTTP_201_CREATED)
 async def place(
     payload: OrderIn,
-    user: Annotated[User, Depends(require_verified)],
+    user: Annotated[User, Depends(require_kyc_approved)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     order, fills = await place_order(db, user, payload)

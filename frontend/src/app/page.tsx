@@ -9,6 +9,7 @@ import { compact } from "@/lib/format";
 import { MarketCard } from "@/components/MarketCard";
 import { TrendingCarousel } from "@/components/TrendingCarousel";
 import { NewsRail } from "@/components/NewsRail";
+import { KycNotice } from "@/components/KycNotice";
 
 const CATEGORIES: { value: string; label: string }[] = [
   { value: "All",       label: "Todos" },
@@ -131,7 +132,11 @@ export default function HomePage() {
 
         <TrendingCarousel />
 
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-16">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
+          <KycNotice />
+        </section>
+
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-16">
           {filters}
           <div className="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-6 mt-4">
             <div>{grid("grid sm:grid-cols-2 gap-4")}</div>

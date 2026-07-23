@@ -104,9 +104,58 @@ export default function KycPage() {
           {busy ? "Guardando..." : "Guardar perfil de cumplimiento"}
         </button>
       </form>
+
+      {user.kyc_status !== "APPROVED" && (
+        <DocsResubmit onSubmitted={refresh} />
+      )}
+
       <p className="text-xs text-ink-500 dark:text-ink-400 mt-6">
         Lee el <Link href="/compliance" className="text-accent-500 underline">marco completo de cumplimiento paraguayo</Link>.
       </p>
+    </div>
+  );
+}
+
+function DocsResubmit({ onSubmitted }: { onSubmitted: () => Promise<void> }) {
+  const [docs, setDocs] = useState<{ FRONT: File | null; BACK: File | null; SELFIE: File | null }>({ FRONT: null, BACK: null, SELFIE: null });
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+
+  const send = async () => {
+    if (!docs.FRONT || !docs.BACK || !docs.SELFIE) { setMsg({ kind: "err", text: "Subí las 3 imágenes." }); return; }
+    setBusy(true); setMsg(null);
+    try {
+      await api.uploadKycDocument("FRONT", docs.FRONT);
+      await api.uploadKycDocument("BACK", docs.BACK);
+      await api.uploadKycDocument("SELFIE", docs.SELFIE);
+      await api.submitKycForReview();
+      await onSubmitted();
+      setMsg({ kind: "ok", text: "Documentos enviados. Tu cuenta está en revisión (hasta 48 hs)." });
+    } catch (e: any) {
+      setMsg({ kind: "err", text: e?.message ?? "No se pudo enviar" });
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="mt-8 pt-6 border-t border-ink-200 dark:border-ink-800 space-y-3">
+      <h2 className="text-sm font-semibold uppercase tracking-wider text-accent-500">Documentos de identidad</h2>
+      <p className="text-xs text-ink-500 dark:text-ink-400">Subí tu cédula (frente + dorso) y una selfie sosteniéndola. JPG, PNG, WEBP o PDF, máx. 8 MB.</p>
+      {(["FRONT", "BACK", "SELFIE"] as const).map((side) => (
+        <label key={side} className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-ink-300 dark:border-ink-700 px-3 py-2.5 cursor-pointer hover:border-accent-500">
+          <div className="text-sm">
+            <div className="font-medium">{side === "FRONT" ? "Frente de la cédula" : side === "BACK" ? "Dorso de la cédula" : "Selfie con la cédula"}</div>
+            <div className="text-xs text-ink-500 truncate max-w-[220px]">{docs[side]?.name ?? "Tocar para elegir"}</div>
+          </div>
+          <span className={`text-xs px-2 py-1 rounded-md ${docs[side] ? "bg-yes-500/10 text-yes-500" : "bg-ink-100 dark:bg-ink-800 text-ink-500"}`}>{docs[side] ? "listo ✓" : "subir"}</span>
+          <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden"
+                 onChange={(e) => setDocs({ ...docs, [side]: e.target.files?.[0] ?? null })}/>
+        </label>
+      ))}
+      {msg && <div className={`text-sm rounded-md px-3 py-2 ${msg.kind === "ok" ? "bg-yes-500/10 text-yes-500" : "bg-no-500/10 text-no-500"}`}>{msg.text}</div>}
+      <button type="button" onClick={send} disabled={busy}
+              className="h-11 px-5 rounded-lg bg-ink-900 text-white dark:bg-white dark:text-ink-900 font-medium disabled:opacity-50">
+        {busy ? "Enviando..." : "Enviar a revisión"}
+      </button>
     </div>
   );
 }

@@ -91,7 +91,17 @@ async def get_kyc_document(
         note=f"{doc.side.value} visto por {admin.handle}",
     ))
     await db.commit()
-    return Response(content=data, media_type=doc.content_type or "application/octet-stream")
+    # nosniff + sin cache: aunque el archivo se validó al subirlo, no dejamos que
+    # el navegador del admin adivine el tipo (defensa contra XSS almacenado).
+    return Response(
+        content=data,
+        media_type=doc.content_type or "application/octet-stream",
+        headers={
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "default-src 'none'; img-src 'self' data:; sandbox",
+            "Cache-Control": "no-store, private",
+        },
+    )
 
 
 @admin_router.post("/{user_id}/approve", response_model=KycProfileOut)

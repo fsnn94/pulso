@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from typing import Protocol
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import (
@@ -25,6 +25,25 @@ from .models import (
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+# Namespace para los advisory locks de fondos (evita chocar con LOCK_* de db.py).
+_FUNDS_LOCK_NS = 811_100
+
+
+async def lock_user_funds(db: AsyncSession, user_id: uuid.UUID) -> None:
+    """Serializa las operaciones de dinero de un usuario dentro de la transacción.
+
+    Sin esto, dos retiros concurrentes leen el mismo saldo y ambos pasan el
+    chequeo (TOCTOU) → saldo negativo. `pg_advisory_xact_lock` es bloqueante y se
+    libera solo al commit/rollback, así que basta con tomarlo antes de leer el
+    saldo y postear los asientos."""
+    key = (user_id.int >> 64) ^ (user_id.int & ((1 << 64) - 1))
+    key = (key & ((1 << 63) - 1))  # bigint positivo
+    await db.execute(
+        text("SELECT pg_advisory_xact_lock(:ns, :k)"),
+        {"ns": _FUNDS_LOCK_NS, "k": key % (2**31 - 1)},
+    )
 
 
 # ----------------------------------------------------------------- ledger core
@@ -129,7 +148,16 @@ async def create_deposit(
 
 async def confirm_deposit(db: AsyncSession, deposit: Deposit) -> Deposit:
     """PENDING → CONFIRMED. Acredita al ledger EXACTAMENTE una vez (idempotente:
-    si ya está CONFIRMED, no-op)."""
+    si ya está CONFIRMED, no-op).
+
+    Toma un lock de fila sobre el depósito antes de re-chequear el estado: dos
+    confirmaciones concurrentes no pueden acreditar dos veces."""
+    locked = (await db.execute(
+        select(Deposit).where(Deposit.id == deposit.id).with_for_update()
+    )).scalar_one_or_none()
+    if locked is None:
+        raise HTTPException(404, "Depósito no encontrado")
+    deposit = locked
     if deposit.status == DepositStatus.CONFIRMED:
         return deposit
     if deposit.status not in (DepositStatus.PENDING, DepositStatus.INITIATED):
@@ -166,6 +194,9 @@ async def request_withdrawal(
         raise HTTPException(403, "Debes completar la verificación de identidad (KYC) antes de retirar.")
     if user.aml_flag:
         raise HTTPException(403, "Tu cuenta está bajo revisión de cumplimiento. No podés retirar por ahora.")
+    # Serializa por usuario: sin esto dos retiros concurrentes leen el mismo saldo
+    # y ambos pasan el chequeo (TOCTOU) → saldo negativo / doble retiro.
+    await lock_user_funds(db, user.id)
     balance = await user_balance_minor(db, user.id, currency)
     if amount_minor > balance:
         raise HTTPException(400, "Saldo insuficiente para el retiro solicitado.")

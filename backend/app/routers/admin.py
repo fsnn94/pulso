@@ -398,6 +398,13 @@ async def set_aml(
 
 # ---------- audit export ----------
 
+def _csv_safe(value: str) -> str:
+    """Neutraliza la inyección de fórmulas al abrir el CSV en Excel/Sheets."""
+    if value and value[0] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + value
+    return value
+
+
 def _mask_id_number(id_number: str | None, reveal: bool) -> str:
     """Enmascara el documento (cédula/pasaporte) salvo para quien tenga permiso de
     verlo completo. Muestra solo los últimos 3 caracteres: `***456`."""
@@ -448,7 +455,8 @@ async def audit_export(
         w.writerow([
             str(r.id), r.created_at.isoformat(), r.market_id, r.title, r.category,
             r.side.value, f"{r.price:.4f}", f"{r.quantity:.4f}", f"{r.price * r.quantity:.4f}",
-            r.handle, r.email, r.country or "", r.full_name or "",
+            _csv_safe(r.handle), _csv_safe(r.email), r.country or "",
+            _csv_safe(r.full_name or ""),
             _mask_id_number(r.id_number, admin.is_superadmin),
             "Y" if r.aml_flag else "N",
         ])

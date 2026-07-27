@@ -106,6 +106,22 @@ _ALLOWED_DOC_TYPES = {
     "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "application/pdf": "pdf",
 }
 
+_PNG_SIG = b"\x89PNG\r\n\x1a\n"
+
+
+def _sniff_matches(data: bytes, content_type: str) -> bool:
+    """Verifica los magic bytes reales contra el Content-Type declarado. Evita
+    guardar HTML/JS (u otro contenido activo) disfrazado de imagen."""
+    if content_type == "image/jpeg":
+        return data[:3] == b"\xff\xd8\xff"
+    if content_type == "image/png":
+        return data[:8] == _PNG_SIG
+    if content_type == "image/webp":
+        return data[:4] == b"RIFF" and data[8:12] == b"WEBP"
+    if content_type == "application/pdf":
+        return data[:5] == b"%PDF-"
+    return False
+
 
 @router.post("/kyc/documents", response_model=KycDocumentOut,
              dependencies=[Depends(rate_limit("kyc-upload", 20, 3600))])
@@ -119,6 +135,14 @@ async def upload_kyc_document(
     anterior del mismo tipo si existía. La imagen va a storage privado; en la DB
     queda solo el puntero."""
     s = get_settings()
+    # No se reemplazan documentos de una cuenta ya aprobada o en revisión: eso
+    # destruiría la evidencia que el equipo revisó (trazabilidad Ley 6534/2020).
+    if user.kyc_status in (KycStatus.APPROVED, KycStatus.UNDER_REVIEW):
+        raise HTTPException(
+            409,
+            "Tu verificación ya fue enviada. Si necesitás corregir un documento, "
+            "contactá al equipo de soporte.",
+        )
     try:
         side_enum = KycDocumentSide[side.upper()]
     except KeyError:
@@ -133,6 +157,10 @@ async def upload_kyc_document(
         raise HTTPException(400, "El archivo está vacío")
     if len(data) > s.kyc_max_file_bytes:
         raise HTTPException(413, "El archivo es demasiado grande (máx. 8 MB)")
+    # El Content-Type lo declara el cliente: verificamos los magic bytes reales
+    # para que no se pueda guardar HTML/JS disfrazado de imagen.
+    if not _sniff_matches(data, ct):
+        raise HTTPException(415, "El archivo no coincide con el formato declarado.")
 
     ext = _ALLOWED_DOC_TYPES[ct]
     key = f"kyc/{user.id}/{side_enum.value.lower()}-{uuid.uuid4().hex}.{ext}"
@@ -192,8 +220,12 @@ async def submit_kyc_for_review(
              dependencies=[Depends(rate_limit("login", 10, 60))])
 async def login(payload: LoginIn, db: Annotated[AsyncSession, Depends(get_db)]):
     ident = payload.email.strip()
+    # Case-insensitive: el registro normaliza con lower(), el login debe coincidir.
     res = await db.execute(
-        select(User).where(or_(User.email == ident, User.handle == ident))
+        select(User).where(or_(
+            func.lower(User.email) == ident.lower(),
+            func.lower(User.handle) == ident.lower(),
+        ))
     )
     user = res.scalar_one_or_none()
     if not user or not verify_password(payload.password, user.password_hash):

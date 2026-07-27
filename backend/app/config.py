@@ -7,8 +7,12 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     app_name: str = "Pulso"
-    environment: str = "development"
-    debug: bool = True
+    # FAIL-SAFE: por defecto asumimos producción. Si alguien despliega sin setear
+    # ENVIRONMENT, se aplican las protecciones fuertes (no se exponen links de
+    # verificación/reseteo, se exige JWT_SECRET fuerte) en vez de quedar abierto.
+    # En desarrollo hay que poner ENVIRONMENT=development explícitamente.
+    environment: str = "production"
+    debug: bool = False
 
     database_url: str = "postgresql+asyncpg://pulso:pulso@localhost:5432/pulso"
     jwt_secret: str = "dev-secret-change-me"

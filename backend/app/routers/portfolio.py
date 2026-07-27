@@ -32,6 +32,14 @@ async def get_calibration(
     return await compute_calibration(db, user.id)
 
 
+def _csv_safe(value: str) -> str:
+    """Neutraliza la inyección de fórmulas en planillas: una celda que empieza con
+    = + - @ (o tab/CR) puede ejecutarse al abrir el CSV en Excel/Sheets."""
+    if value and value[0] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + value
+    return value
+
+
 @router.get("/export.csv")
 async def export_operations(
     user: Annotated[User, Depends(get_current_user)],
@@ -53,12 +61,12 @@ async def export_operations(
         w.writerow([
             a.created_at.isoformat(),
             a.kind,
-            market_title or (a.market_id or ""),
+            _csv_safe(market_title or (a.market_id or "")),
             a.side.value if a.side else "",
             f"{a.quantity:.4f}" if a.quantity is not None else "",
             f"{a.price:.4f}" if a.price is not None else "",
             f"{a.total:.4f}" if a.total is not None else "",
-            a.note or "",
+            _csv_safe(a.note or ""),
         ])
     buf.seek(0)
     fn = f"pulso-operaciones-{user.handle}-{datetime.now(timezone.utc).date()}.csv"

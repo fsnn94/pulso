@@ -48,12 +48,9 @@ class Settings(BaseSettings):
     r2_endpoint: str = ""                      # opcional; si vacío se arma con r2_account_id
 
     seed_on_startup: bool = True
-    # Datos demo (usuarios/mercados/posiciones de ejemplo). APAGADO por defecto:
-    # fase de mercados REALES. Si se prende (SEED_DEMO_DATA=true) se siembran de
-    # forma idempotente, pero NO es lo deseado en producción.
-    # OJO: el seed corre ANTES que la purga; para arrancar limpio hay que tener
-    # esto en false Y correr PURGE_DEMO_DATA=true una vez (ver seed.purge_demo_data).
-    seed_demo_data: bool = False
+    # NOTA: los datos demo se ELIMINARON del código (fase de mercados reales).
+    # Ya no existe SEED_DEMO_DATA: la plataforma nunca siembra mercados de ejemplo.
+    # Para borrar la demo ya sembrada en prod, usar PURGE_DEMO_DATA (abajo) una vez.
     # Limpieza ÚNICA de datos demo ya existentes en la base (ver seed.purge_demo_data).
     # Se corre una sola vez (marcador en app_settings). Setealo en true para el deploy
     # de limpieza y luego podés dejarlo o volverlo a false.

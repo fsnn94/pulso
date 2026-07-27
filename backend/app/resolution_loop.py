@@ -94,7 +94,6 @@ async def _markets_needing_resolution(db: AsyncSession) -> list[Market]:
 
 
 async def _run_resolver(db: AsyncSession, market: Market) -> ResolutionProposal | None:
-    settings = get_settings()
     cfg = market.resolution_config or {"type": "manual"}
     code = cfg.get("type", "manual")
     resolver = RESOLVERS.get(code)
@@ -110,11 +109,12 @@ async def _run_resolver(db: AsyncSession, market: Market) -> ResolutionProposal 
     if result is None:
         return None  # transient failure; retry next tick
 
-    auto_h = result.auto_finalize_hours if result.auto_finalize_hours is not None else None
-    if auto_h is None and result.outcome is not None:
-        # outcome was produced but resolver flagged "no auto-finalize" — still
-        # use default soft window so it doesn't get stuck forever.
-        auto_h = settings.resolution_auto_finalize_hours_default
+    # Contrato de ResolverResult: auto_finalize_hours=None significa NUNCA
+    # auto-finalizar (lo confirma un admin). Antes se pisaba con la ventana por
+    # defecto "para que no quede trabado", lo que hacía que un resultado decidido
+    # por el LLM se pagara solo a las 24h sin revisión humana. No queda trabado:
+    # la propuesta PENDING aparece en la cola de /admin/resolutions.
+    auto_h = result.auto_finalize_hours
 
     finalizes_at = (
         datetime.now(timezone.utc) + timedelta(hours=auto_h)
